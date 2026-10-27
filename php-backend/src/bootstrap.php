@@ -134,8 +134,9 @@ function createApplicationRouter(): \Ciptaone\Core\Router {
     $router->get('/api/v1/api-keys', [$apiKeyCtrl, 'listApiKeys']);
     $router->delete('/api/v1/api-keys/{key_id}', [$apiKeyCtrl, 'revokeApiKey']);
 
-    // OpenAI Compatible Gateway
+    // OpenAI Compatible Gateway & Public Models
     $router->get('/v1/models', [$openAiCtrl, 'listModels']);
+    $router->get('/api/v1/models', [$openAiCtrl, 'listActiveModels']);
     $router->post('/v1/chat/completions', [$openAiCtrl, 'chatCompletions']);
 
     // Top-ups

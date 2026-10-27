@@ -49,8 +49,7 @@ export const PlaygroundPage: React.FC = () => {
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const res = await apiFetch<Model[]>("/api/v1/admin/models").catch(async () => {
-          // If not admin, get from /v1/models list
+        const res = await apiFetch<Model[]>("/api/v1/models").catch(async () => {
           const openAiModels = await apiFetch<{ data: { id: string }[] }>("/v1/models");
           return openAiModels.data.map((m) => ({
             id: m.id,

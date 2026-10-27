@@ -9,7 +9,6 @@ import { PlaygroundPage } from "./pages/PlaygroundPage";
 import { ApiKeysPage } from "./pages/ApiKeysPage";
 import { TopupPage } from "./pages/TopupPage";
 import { HistoryPage } from "./pages/HistoryPage";
-import { AdminPage } from "./pages/AdminPage";
 import { DocsPage } from "./pages/DocsPage";
 import { LandingPage } from "./pages/LandingPage";
 
@@ -135,14 +134,7 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/admin" element={<Navigate to="/" replace />} />
           <Route
             path="/docs"
             element={

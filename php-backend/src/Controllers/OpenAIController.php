@@ -33,6 +33,12 @@ class OpenAIController extends BaseController
         Response::json($res);
     }
 
+    public function listActiveModels(Request $request): void
+    {
+        $res = $this->routerService->listActiveModels();
+        Response::json($res);
+    }
+
     public function chatCompletions(Request $request): void
     {
         [$userId, $apiKeyId] = $this->getAuthForCompletion($request);
