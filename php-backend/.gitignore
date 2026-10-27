@@ -1,0 +1,14 @@
+# Secrets
+.env
+*.env
+!.env.example
+
+# Local SQLite databases
+storage/*.sqlite3
+*.sqlite3
+*.db
+
+# Private upload storage
+storage/proofs/*
+!storage/proofs/.htaccess
+!storage/proofs/.gitkeep

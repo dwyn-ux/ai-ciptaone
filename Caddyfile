@@ -1,0 +1,34 @@
+# Caddyfile for Decomu AI Router on Oracle Always Free VM
+# Replace 'decomu.site' with your registered domain or Oracle Public IP
+
+decomu.site {
+    encode gzip zstd
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # API and OpenAI-compatible Gateway to FastAPI
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /v1/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /health/* {
+        reverse_proxy backend:8000
+    }
+
+    # Frontend Static Files (Built Vite dist)
+    handle {
+        root * /srv/frontend
+        try_files {path} /index.html
+        file_server
+    }
+}

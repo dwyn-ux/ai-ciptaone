@@ -1,0 +1,12 @@
+# ========================================================
+# PRIVATE STORAGE PROTECTION
+# Deny all direct HTTP/HTTPS web access to payment proof files
+# Proofs may only be served via authenticated Admin PHP endpoints
+# ========================================================
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>

@@ -1,0 +1,67 @@
+# Environment & secrets
+.env
+*.env
+.env.*
+!.env.example
+!php-backend/.env.example
+php-backend/.env
+
+# Databases & local storage
+*.sqlite3
+*.db
+local_d1.sqlite3
+storage/proofs/*
+!storage/proofs/.gitkeep
+php-backend/storage/*.sqlite3
+php-backend/storage/proofs/*
+!php-backend/storage/proofs/.htaccess
+!php-backend/storage/proofs/.gitkeep
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+
+# Databases & local storage
+*.sqlite3
+*.db
+local_d1.sqlite3
+storage/proofs/*
+!storage/proofs/.gitkeep
+
+# Node / Frontend / Worker
+node_modules/
+frontend/dist/
+frontend/node_modules/
+worker/node_modules/
+worker/dist/
+.wrangler/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db

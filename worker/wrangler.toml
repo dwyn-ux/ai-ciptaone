@@ -1,0 +1,11 @@
+name = "decomu-d1-worker"
+main = "src/index.ts"
+compatibility_date = "2024-04-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "decomu-d1"
+database_id = "your-d1-database-uuid"
+migrations_dir = "../migrations"
+
+# D1_SERVICE_TOKEN is configured via `wrangler secret put D1_SERVICE_TOKEN`
