@@ -1,0 +1,42 @@
+# ========================================================
+# AI Ciptaone Router - Root Apache / LiteSpeed .htaccess
+# Protects sensitive files and routes to php-backend/public
+# ========================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # 1. Disable gzip / mod_deflate buffering for real-time SSE streaming
+    <IfModule mod_env.c>
+        SetEnv no-gzip 1
+    </IfModule>
+    <IfModule LiteSpeed>
+        RewriteRule .* - [E=nobuf:1]
+    </IfModule>
+
+    # 2. Block direct access to hidden files, sensitive extensions and directories
+    RewriteRule ^\.(?!well-known) - [F]
+    RewriteRule ^(php-backend/(config|storage|src|tests|migrations)|\.git|migrations|backend|frontend)/ - [F]
+    RewriteRule \.(sqlite|sqlite3|db|env|sql|log|sh|bat|md|yml|pub)$ - [F]
+
+    # 3. Route Backend API endpoints directly to PHP Front Controller
+    RewriteRule ^(api/v1/.*|v1/.*|health/.*)$ php-backend/public/index.php [QSA,L]
+
+    # 4. Route admin.php
+    RewriteRule ^admin\.php$ php-backend/public/admin.php [QSA,L]
+
+    # 5. Route root
+    RewriteRule ^$ php-backend/public/index.php [QSA,L]
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Disable Directory Browsing
+Options -Indexes
