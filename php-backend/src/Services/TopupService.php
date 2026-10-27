@@ -11,6 +11,7 @@ use Ciptaone\Core\Security;
 use Ciptaone\Services\PaymentAdapters\BasePaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\ManualPaymentAdapter;
+use Ciptaone\Services\PaymentAdapters\TripayPaymentAdapter;
 
 /**
  * Top-up invoice management, safe private payment proof uploads,
@@ -26,13 +27,15 @@ class TopupService
     private ManualPaymentAdapter $manualTransferAdapter;
     private ManualPaymentAdapter $manualQrisAdapter;
     private DanaPaymentAdapter $danaAdapter;
+    private TripayPaymentAdapter $tripayAdapter;
 
     public function __construct(
         ?Database $db = null,
         ?Config $config = null,
         ?WalletService $walletService = null,
         ?TelegramBotService $telegramBot = null,
-        ?AuditService $auditService = null
+        ?AuditService $auditService = null,
+        ?TripayPaymentAdapter $tripayAdapter = null
     ) {
         $this->db = $db ?? Database::getInstance();
         $this->config = $config ?? Config::getInstance();
@@ -43,14 +46,16 @@ class TopupService
         $this->manualTransferAdapter = new ManualPaymentAdapter('manual_transfer', $this->config);
         $this->manualQrisAdapter = new ManualPaymentAdapter('manual_qris', $this->config);
         $this->danaAdapter = new DanaPaymentAdapter($this->config);
+        $this->tripayAdapter = $tripayAdapter ?? new TripayPaymentAdapter(null, $this->config, $this->db);
     }
 
-    private function getAdapter(string $paymentMethod): BasePaymentAdapter
+    public function getAdapter(string $paymentMethod): BasePaymentAdapter
     {
         return match ($paymentMethod) {
             'manual_transfer' => $this->manualTransferAdapter,
             'manual_qris' => $this->manualQrisAdapter,
             'dana_qris_dynamic' => $this->danaAdapter,
+            'tripay_qris' => $this->tripayAdapter,
             default => throw new AppError(
                 ErrorCode::INVALID_REQUEST,
                 "Metode pembayaran '{$paymentMethod}' tidak valid.",

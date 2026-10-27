@@ -335,6 +335,10 @@ class AdminController extends BaseController
         $openai = $this->getSettingValue('OPENAI_API_KEY');
         $telegramToken = $this->getSettingValue('TELEGRAM_BOT_TOKEN');
         $telegramAdmins = $this->getSettingValue('TELEGRAM_ADMIN_IDS');
+        $tripayApiKey = $this->getSettingValue('TRIPAY_API_KEY');
+        $tripayPrivKey = $this->getSettingValue('TRIPAY_PRIVATE_KEY');
+        $tripayMerchant = $this->getSettingValue('TRIPAY_MERCHANT_CODE');
+        $tripayMode = $this->getSettingValue('TRIPAY_MODE') ?: 'sandbox';
 
         Response::json([
             'openrouter' => [
@@ -349,6 +353,13 @@ class AdminController extends BaseController
                 'configured' => !empty($telegramToken),
                 'admin_ids' => $telegramAdmins,
             ],
+            'tripay' => [
+                'configured' => !empty($tripayApiKey) && !empty($tripayPrivKey) && !empty($tripayMerchant),
+                'merchant_code' => $tripayMerchant,
+                'mode' => $tripayMode,
+                'masked_api_key' => !empty($tripayApiKey) ? substr($tripayApiKey, 0, 6) . '••••••••' . substr($tripayApiKey, -4) : null,
+                'masked_private_key' => !empty($tripayPrivKey) ? substr($tripayPrivKey, 0, 4) . '••••••••' . substr($tripayPrivKey, -4) : null,
+            ],
         ]);
     }
 
@@ -359,7 +370,11 @@ class AdminController extends BaseController
         $body = $request->getBody();
         $nowIso = gmdate('Y-m-d H:i:s');
 
-        $allowedKeys = ['OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS'];
+        $allowedKeys = [
+            'OPENROUTER_API_KEY', 'OPENAI_API_KEY',
+            'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS',
+            'TRIPAY_API_KEY', 'TRIPAY_PRIVATE_KEY', 'TRIPAY_MERCHANT_CODE', 'TRIPAY_MODE'
+        ];
         $updated = [];
 
         foreach ($allowedKeys as $key) {

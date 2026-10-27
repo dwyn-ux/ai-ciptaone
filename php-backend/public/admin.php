@@ -46,14 +46,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isAdmin) {
     try {
         if ($action === 'save_settings') {
             $nowIso = gmdate('Y-m-d H:i:s');
-            $allowed = ['OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS'];
+            $allowed = [
+                'OPENROUTER_API_KEY', 'OPENAI_API_KEY',
+                'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS',
+                'TRIPAY_API_KEY', 'TRIPAY_PRIVATE_KEY', 'TRIPAY_MERCHANT_CODE', 'TRIPAY_MODE'
+            ];
             foreach ($allowed as $k) {
                 if (isset($_POST[$k]) && trim($_POST[$k]) !== '') {
                     $v = trim($_POST[$k]);
                     $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)', [$k, $v, $nowIso]);
                 }
             }
-            $message = 'Pengaturan API Provider & Telegram berhasil disimpan!';
+            $message = 'Pengaturan API Provider, Telegram, dan Tripay berhasil disimpan!';
         } elseif ($action === 'toggle_model') {
             $modelId = $_POST['model_id'] ?? '';
             $newStatus = (int)($_POST['new_status'] ?? 0);
@@ -113,6 +117,10 @@ $openrouterKey = $settingsRows['OPENROUTER_API_KEY'] ?? (string)$config->get('OP
 $openaiKey = $settingsRows['OPENAI_API_KEY'] ?? (string)$config->get('OPENAI_API_KEY', '');
 $telegramToken = $settingsRows['TELEGRAM_BOT_TOKEN'] ?? (string)$config->get('TELEGRAM_BOT_TOKEN', '');
 $telegramAdmins = $settingsRows['TELEGRAM_ADMIN_IDS'] ?? (string)$config->get('TELEGRAM_ADMIN_IDS', '');
+$tripayApiKey = $settingsRows['TRIPAY_API_KEY'] ?? (string)$config->get('TRIPAY_API_KEY', '');
+$tripayPrivKey = $settingsRows['TRIPAY_PRIVATE_KEY'] ?? (string)$config->get('TRIPAY_PRIVATE_KEY', '');
+$tripayMerchant = $settingsRows['TRIPAY_MERCHANT_CODE'] ?? (string)$config->get('TRIPAY_MERCHANT_CODE', '');
+$tripayMode = $settingsRows['TRIPAY_MODE'] ?? (string)$config->get('TRIPAY_MODE', 'sandbox');
 
 $models = $db->fetchAll('SELECT m.*, p.slug as provider_slug FROM models m JOIN providers p ON m.provider_id = p.id ORDER BY m.public_id ASC');
 $topups = $db->fetchAll('SELECT t.*, u.email_normalized as user_email FROM topups t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC LIMIT 50');
@@ -222,7 +230,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
                     <!-- Telegram Settings -->
                     <div class="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
                         <div class="flex items-center justify-between">
-                            <span class="font-bold text-sm text-slate-800">3. Telegram Bot Notifier (Opsional)</span>
+                            <span class="font-bold text-sm text-slate-800">3. Telegram Bot Notifier & Customer Bot</span>
                             <span class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase <?php echo $telegramToken ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'; ?>">
                                 <?php echo $telegramToken ? '✅ Terkonfigurasi' : 'Belum Diisi'; ?>
                             </span>
@@ -234,6 +242,46 @@ $activeTab = $_GET['tab'] ?? 'settings';
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 mb-1">Telegram Admin IDs (koma-terpisah)</label>
                             <input type="text" name="TELEGRAM_ADMIN_IDS" value="<?php echo htmlspecialchars($telegramAdmins); ?>" placeholder="Contoh: 12345678,98765432" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-mono">
+                        </div>
+                    </div>
+
+                    <!-- Tripay QRIS Dinamis Settings -->
+                    <div class="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-slate-800">4. Tripay Payment Gateway (QRIS Dinamis Otomatis)</span>
+                            <span class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase <?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'; ?>">
+                                <?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? '✅ Siap Pakai (' . strtoupper($tripayMode) . ')' : 'Belum Lengkap'; ?>
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500">Memungkinkan pelanggan membeli saldo instan via QRIS di Telegram atau web dengan fee 0.7% dan verifikasi otomatis 3 detik.</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Merchant Code</label>
+                                <input type="text" name="TRIPAY_MERCHANT_CODE" value="<?php echo htmlspecialchars($tripayMerchant); ?>" placeholder="Contoh: T12345" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Environment Mode</label>
+                                <select name="TRIPAY_MODE" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-semibold">
+                                    <option value="sandbox" <?php echo $tripayMode === 'sandbox' ? 'selected' : ''; ?>>🧪 Sandbox (Testing / Uji Coba)</option>
+                                    <option value="production" <?php echo $tripayMode === 'production' ? 'selected' : ''; ?>>🚀 Production (Live / Uang Asli)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">API Key</label>
+                            <input type="password" name="TRIPAY_API_KEY" placeholder="<?php echo $tripayApiKey ? '••••••••' . substr($tripayApiKey, -4) : 'DEV-xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-mono">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Private Key (Secret Key Callback)</label>
+                            <input type="password" name="TRIPAY_PRIVATE_KEY" placeholder="<?php echo $tripayPrivKey ? '••••••••' . substr($tripayPrivKey, -4) : 'xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-mono">
+                        </div>
+
+                        <div class="p-3 bg-indigo-50/70 border border-indigo-100 rounded-lg text-xs text-indigo-900 space-y-1">
+                            <p class="font-bold">📍 URL Callback / Webhook untuk dimasukkan di Dashboard Tripay:</p>
+                            <code class="block font-mono bg-white px-2.5 py-1 rounded border border-indigo-200 select-all font-semibold">https://ciptaone.com/api/v1/webhooks/tripay</code>
                         </div>
                     </div>
 

@@ -10,6 +10,7 @@ namespace Ciptaone\Core;
 class Response
 {
     private static bool $headersSent = false;
+    public static bool $exitOnSend = true;
 
     /**
      * Sends standard JSON response.
@@ -18,7 +19,9 @@ class Response
     {
         self::sendBaseHeaders($statusCode, array_merge(['Content-Type' => 'application/json; charset=utf-8'], $headers));
         echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        exit;
+        if (self::$exitOnSend) {
+            exit;
+        }
     }
 
     /**

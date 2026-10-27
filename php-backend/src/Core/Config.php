@@ -69,6 +69,12 @@ class Config
             'TELEGRAM_ADMIN_IDS' => '',
             'TELEGRAM_WEBHOOK_SECRET' => '',
 
+            // Tripay Payment Gateway (Dynamic QRIS)
+            'TRIPAY_API_KEY' => '',
+            'TRIPAY_PRIVATE_KEY' => '',
+            'TRIPAY_MERCHANT_CODE' => '',
+            'TRIPAY_MODE' => 'sandbox', // 'sandbox' or 'production'
+
             // DANA (Deactivated by default until merchant verified)
             'DANA_ENABLED' => false,
             'DANA_ENV' => 'sandbox',
