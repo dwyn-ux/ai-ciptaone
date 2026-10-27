@@ -10,6 +10,7 @@ use Ciptaone\Core\Request;
 use Ciptaone\Core\Response;
 use Ciptaone\Core\Security;
 use Ciptaone\Services\AuditService;
+use Ciptaone\Services\RouterService;
 use Ciptaone\Services\TopupService;
 use Ciptaone\Services\WalletService;
 
@@ -133,6 +134,7 @@ class AdminController extends BaseController
     public function listProviders(Request $request): void
     {
         $this->getAdminUser($request);
+        RouterService::ensureDefaultProviders($this->db);
         $rows = $this->db->fetchAll('SELECT * FROM providers ORDER BY slug ASC');
         $data = array_map(function ($r) {
             return [
@@ -145,6 +147,46 @@ class AdminController extends BaseController
             ];
         }, $rows);
         Response::json($data);
+    }
+
+    public function createProvider(Request $request): void
+    {
+        Security::validateCsrf($request, $this->config);
+        $admin = $this->getAdminUser($request);
+        $body = $request->getBody();
+
+        $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)($body['slug'] ?? ''))));
+        $displayName = trim((string)($body['display_name'] ?? ''));
+        $baseUrl = trim((string)($body['base_url'] ?? ''));
+        $apiKey = trim((string)($body['api_key'] ?? ''));
+
+        if ($slug === '' || $displayName === '') {
+            throw new AppError(ErrorCode::INVALID_REQUEST, 'Slug dan Nama Provider wajib diisi.', 422);
+        }
+
+        $existing = $this->db->fetchOne('SELECT id FROM providers WHERE slug = ?', [$slug]);
+        if ($existing !== null) {
+            throw new AppError(ErrorCode::INVALID_REQUEST, "Provider dengan slug '{$slug}' sudah ada.", 409);
+        }
+
+        $provId = Security::generateId('prov');
+        $nowIso = gmdate('Y-m-d H:i:s');
+        $this->db->execute(
+            'INSERT INTO providers (id, slug, display_name, enabled, commercial_use_approved, terms_checked_at, created_at, updated_at)
+             VALUES (?, ?, ?, 1, 1, ?, ?, ?)',
+            [$provId, $slug, $displayName, $nowIso, $nowIso, $nowIso]
+        );
+
+        $slugUpper = strtoupper(preg_replace('/[^a-zA-Z0-9_]/', '_', $slug));
+        if ($baseUrl !== '') {
+            $this->db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)', ["PROVIDER_{$slugUpper}_BASE_URL", $baseUrl, $nowIso]);
+        }
+        if ($apiKey !== '') {
+            $this->db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)', ["PROVIDER_{$slugUpper}_API_KEY", $apiKey, $nowIso]);
+        }
+
+        $this->auditService->logAction($admin['id'], 'create_provider', 'provider', $slug, ['display_name' => $displayName, 'base_url' => $baseUrl]);
+        Response::json(['status' => 'success', 'message' => "Provider '{$displayName}' berhasil ditambahkan.", 'id' => $provId]);
     }
 
     public function updateProvider(Request $request, array $params): void
@@ -333,6 +375,13 @@ class AdminController extends BaseController
         $this->getAdminUser($request);
         $openrouter = $this->getSettingValue('OPENROUTER_API_KEY');
         $openai = $this->getSettingValue('OPENAI_API_KEY');
+        $groq = $this->getSettingValue('GROQ_API_KEY');
+        $deepseek = $this->getSettingValue('DEEPSEEK_API_KEY');
+        $gemini = $this->getSettingValue('GEMINI_API_KEY');
+        $mistral = $this->getSettingValue('MISTRAL_API_KEY');
+        $customBaseUrl = $this->getSettingValue('CUSTOM_PROVIDER_BASE_URL');
+        $customKey = $this->getSettingValue('CUSTOM_PROVIDER_API_KEY');
+
         $telegramToken = $this->getSettingValue('TELEGRAM_BOT_TOKEN');
         $telegramAdmins = $this->getSettingValue('TELEGRAM_ADMIN_IDS');
         $tripayApiKey = $this->getSettingValue('TRIPAY_API_KEY');
@@ -348,6 +397,27 @@ class AdminController extends BaseController
             'openai' => [
                 'configured' => !empty($openai),
                 'masked' => !empty($openai) ? substr($openai, 0, 7) . '••••••••' . substr($openai, -4) : null,
+            ],
+            'groq' => [
+                'configured' => !empty($groq),
+                'masked' => !empty($groq) ? substr($groq, 0, 8) . '••••••••' . substr($groq, -4) : null,
+            ],
+            'deepseek' => [
+                'configured' => !empty($deepseek),
+                'masked' => !empty($deepseek) ? substr($deepseek, 0, 8) . '••••••••' . substr($deepseek, -4) : null,
+            ],
+            'gemini' => [
+                'configured' => !empty($gemini),
+                'masked' => !empty($gemini) ? substr($gemini, 0, 8) . '••••••••' . substr($gemini, -4) : null,
+            ],
+            'mistral' => [
+                'configured' => !empty($mistral),
+                'masked' => !empty($mistral) ? substr($mistral, 0, 8) . '••••••••' . substr($mistral, -4) : null,
+            ],
+            'custom' => [
+                'base_url' => $customBaseUrl,
+                'configured' => !empty($customBaseUrl),
+                'masked_key' => !empty($customKey) ? substr($customKey, 0, 6) . '••••••••' . substr($customKey, -4) : null,
             ],
             'telegram' => [
                 'configured' => !empty($telegramToken),
@@ -372,6 +442,8 @@ class AdminController extends BaseController
 
         $allowedKeys = [
             'OPENROUTER_API_KEY', 'OPENAI_API_KEY',
+            'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'GEMINI_API_KEY', 'MISTRAL_API_KEY',
+            'CUSTOM_PROVIDER_BASE_URL', 'CUSTOM_PROVIDER_API_KEY',
             'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS',
             'TRIPAY_API_KEY', 'TRIPAY_PRIVATE_KEY', 'TRIPAY_MERCHANT_CODE', 'TRIPAY_MODE'
         ];

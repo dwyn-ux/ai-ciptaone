@@ -72,4 +72,71 @@ function test_admin_audit_suite(Database $db): void
     );
     $rowSetting = $db->fetchOne('SELECT setting_value FROM system_settings WHERE setting_key = ?', ['OPENROUTER_API_KEY']);
     assert($rowSetting['setting_value'] === 'sk-or-v1-testkey12345678', 'System settings persistence failed');
+
+    // 5. Test Multi-Provider Bootstrap & Dynamic Keys
+    \Ciptaone\Services\RouterService::ensureDefaultProviders($db);
+    $allProviders = $db->fetchAll('SELECT slug FROM providers');
+    $slugs = array_column($allProviders, 'slug');
+    assert(in_array('groq', $slugs, true), 'Groq provider missing');
+    assert(in_array('deepseek', $slugs, true), 'DeepSeek provider missing');
+    assert(in_array('gemini', $slugs, true), 'Gemini provider missing');
+    assert(in_array('mistral', $slugs, true), 'Mistral provider missing');
+    assert(in_array('custom', $slugs, true), 'Custom provider missing');
+
+    // 6. Test AdminController Settings with Multi-Provider Keys
+    $adminController = new \Ciptaone\Controllers\AdminController($db, $auditService);
+    \Ciptaone\Core\Response::$exitOnSend = false;
+
+    // Login session for admin
+    $sessionToken = bin2hex(random_bytes(32));
+    $db->execute(
+        'INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ['sess_admin_test', $admin['id'], hash('sha256', $sessionToken), date('Y-m-d H:i:s', time() + 3600), $nowIso, $nowIso]
+    );
+
+    $reqHeaders = [
+        'cookie' => 'ciptaone_session=' . $sessionToken,
+    ];
+    $csrfToken = hash_hmac('sha256', $admin['id'] . $sessionToken, (string)\Ciptaone\Core\Config::getInstance()->get('SECRET_KEY', 'ciptaone_sec_key_default'));
+
+    $updateReq = new \Ciptaone\Core\Request(
+        'POST',
+        '/admin/settings',
+        array_merge($reqHeaders, ['x-csrf-token' => $csrfToken, 'content-type' => 'application/json']),
+        [],
+        ['ciptaone_session' => $sessionToken],
+        json_encode([
+            'GROQ_API_KEY' => 'gsk_test1234567890',
+            'DEEPSEEK_API_KEY' => 'sk_ds_test1234567890',
+            'GEMINI_API_KEY' => 'AIzaSy_test1234567890',
+            'CUSTOM_PROVIDER_BASE_URL' => 'http://localhost:11434/v1',
+        ])
+    );
+
+    ob_start();
+    $adminController->updateSettings($updateReq);
+    $outJson = ob_get_clean();
+    $updateRes = json_decode($outJson, true);
+    assert(($updateRes['status'] ?? '') === 'success', 'Update multi-provider settings failed');
+
+    // Verify stored in system_settings
+    $groqRow = $db->fetchOne('SELECT setting_value FROM system_settings WHERE setting_key = ?', ['GROQ_API_KEY']);
+    assert($groqRow['setting_value'] === 'gsk_test1234567890', 'GROQ_API_KEY was not stored');
+    $geminiRow = $db->fetchOne('SELECT setting_value FROM system_settings WHERE setting_key = ?', ['GEMINI_API_KEY']);
+    assert($geminiRow['setting_value'] === 'AIzaSy_test1234567890', 'GEMINI_API_KEY was not stored');
+    $customRow = $db->fetchOne('SELECT setting_value FROM system_settings WHERE setting_key = ?', ['CUSTOM_PROVIDER_BASE_URL']);
+    assert($customRow['setting_value'] === 'http://localhost:11434/v1', 'CUSTOM_PROVIDER_BASE_URL was not stored');
+
+    // Test getSettings exposes multi-provider configuration safely
+    $getReq = new \Ciptaone\Core\Request('GET', '/admin/settings', $reqHeaders, [], ['ciptaone_session' => $sessionToken]);
+    ob_start();
+    $adminController->getSettings($getReq);
+    $getJson = ob_get_clean();
+    $getRes = json_decode($getJson, true);
+    assert(($getRes['groq']['configured'] ?? false) === true, 'Groq should report configured = true');
+    assert(str_contains($getRes['groq']['masked'] ?? '', '••••••••'), 'Groq key not masked');
+    assert(($getRes['gemini']['configured'] ?? false) === true, 'Gemini should report configured = true');
+    assert(($getRes['custom']['configured'] ?? false) === true, 'Custom endpoint should report configured = true');
+
+    \Ciptaone\Core\Response::$exitOnSend = true;
 }

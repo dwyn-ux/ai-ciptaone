@@ -66,27 +66,89 @@ class RouterService
         return (string)$this->config->get($key, '');
     }
 
+    public static function ensureDefaultProviders(Database $db): void
+    {
+        $defaults = [
+            ['id' => 'prov_mock', 'slug' => 'mock', 'display_name' => 'Mock Provider (Testing Only)', 'enabled' => 1],
+            ['id' => 'prov_openrouter', 'slug' => 'openrouter', 'display_name' => 'OpenRouter (Aggregator 200+ Model)', 'enabled' => 1],
+            ['id' => 'prov_openai', 'slug' => 'openai', 'display_name' => 'OpenAI Official', 'enabled' => 0],
+            ['id' => 'prov_groq', 'slug' => 'groq', 'display_name' => 'Groq Cloud (LPU Ultra-Fast)', 'enabled' => 0],
+            ['id' => 'prov_deepseek', 'slug' => 'deepseek', 'display_name' => 'DeepSeek Direct API', 'enabled' => 0],
+            ['id' => 'prov_gemini', 'slug' => 'gemini', 'display_name' => 'Google Gemini (Official)', 'enabled' => 0],
+            ['id' => 'prov_mistral', 'slug' => 'mistral', 'display_name' => 'Mistral AI Direct', 'enabled' => 0],
+            ['id' => 'prov_custom', 'slug' => 'custom', 'display_name' => 'Custom OpenAI / Local (Ollama/vLLM)', 'enabled' => 0],
+        ];
+
+        $nowIso = gmdate('Y-m-d H:i:s');
+        foreach ($defaults as $d) {
+            $existing = $db->fetchOne('SELECT id FROM providers WHERE slug = ?', [$d['slug']]);
+            if (!$existing) {
+                $db->execute(
+                    'INSERT INTO providers (id, slug, display_name, enabled, commercial_use_approved, terms_checked_at, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, 1, ?, ?, ?)',
+                    [$d['id'], $d['slug'], $d['display_name'], $d['enabled'], $nowIso, $nowIso, $nowIso]
+                );
+            }
+        }
+    }
+
     private function getAdapter(string $providerSlug): BaseProviderAdapter
     {
         if ($providerSlug === 'mock') {
             return $this->mockAdapter;
-        } elseif ($providerSlug === 'openrouter') {
-            return new OpenAICompatibleAdapter(
-                'https://openrouter.ai/api/v1',
-                $this->getSettingValue('OPENROUTER_API_KEY')
-            );
-        } elseif ($providerSlug === 'openai') {
-            return new OpenAICompatibleAdapter(
-                'https://api.openai.com/v1',
-                $this->getSettingValue('OPENAI_API_KEY')
-            );
-        } else {
-            throw new AppError(
-                ErrorCode::MODEL_UNAVAILABLE,
-                "Provider '{$providerSlug}' belum memiliki adapter aktif.",
-                503
-            );
         }
+
+        $predefined = [
+            'openrouter' => [
+                'base_url' => 'https://openrouter.ai/api/v1',
+                'key_setting' => 'OPENROUTER_API_KEY',
+            ],
+            'openai' => [
+                'base_url' => 'https://api.openai.com/v1',
+                'key_setting' => 'OPENAI_API_KEY',
+            ],
+            'groq' => [
+                'base_url' => 'https://api.groq.com/openai/v1',
+                'key_setting' => 'GROQ_API_KEY',
+            ],
+            'deepseek' => [
+                'base_url' => 'https://api.deepseek.com',
+                'key_setting' => 'DEEPSEEK_API_KEY',
+            ],
+            'gemini' => [
+                'base_url' => 'https://generativelanguage.googleapis.com/v1beta/openai/',
+                'key_setting' => 'GEMINI_API_KEY',
+            ],
+            'mistral' => [
+                'base_url' => 'https://api.mistral.ai/v1',
+                'key_setting' => 'MISTRAL_API_KEY',
+            ],
+            'custom' => [
+                'base_url' => $this->getSettingValue('CUSTOM_PROVIDER_BASE_URL') ?: 'http://localhost:11434/v1',
+                'key_setting' => 'CUSTOM_PROVIDER_API_KEY',
+            ],
+        ];
+
+        if (isset($predefined[$providerSlug])) {
+            $config = $predefined[$providerSlug];
+            $baseUrl = $config['base_url'];
+            $apiKey = $this->getSettingValue($config['key_setting']);
+            return new OpenAICompatibleAdapter($baseUrl, $apiKey);
+        }
+
+        // Dynamic provider check: PROVIDER_{SLUG}_BASE_URL & PROVIDER_{SLUG}_API_KEY
+        $slugUpper = strtoupper(preg_replace('/[^a-zA-Z0-9_]/', '_', $providerSlug));
+        $customBaseUrl = $this->getSettingValue("PROVIDER_{$slugUpper}_BASE_URL");
+        if (!empty($customBaseUrl)) {
+            $customApiKey = $this->getSettingValue("PROVIDER_{$slugUpper}_API_KEY");
+            return new OpenAICompatibleAdapter($customBaseUrl, $customApiKey);
+        }
+
+        throw new AppError(
+            ErrorCode::MODEL_UNAVAILABLE,
+            "Provider '{$providerSlug}' belum memiliki adapter aktif atau base URL.",
+            503
+        );
     }
 
     public function listActiveModels(): array

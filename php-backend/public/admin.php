@@ -155,16 +155,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action !== 'admin_login') {
             $nowIso = gmdate('Y-m-d H:i:s');
             $allowed = [
                 'OPENROUTER_API_KEY', 'OPENAI_API_KEY',
+                'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'GEMINI_API_KEY', 'MISTRAL_API_KEY',
+                'CUSTOM_PROVIDER_BASE_URL', 'CUSTOM_PROVIDER_API_KEY',
                 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS',
                 'TRIPAY_API_KEY', 'TRIPAY_PRIVATE_KEY', 'TRIPAY_MERCHANT_CODE', 'TRIPAY_MODE'
             ];
             foreach ($allowed as $k) {
-                if (isset($_POST[$k]) && trim($_POST[$k]) !== '') {
-                    $v = trim($_POST[$k]);
-                    $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)', [$k, $v, $nowIso]);
+                if (isset($_POST[$k])) {
+                    $v = trim((string)$_POST[$k]);
+                    if ($v !== '') {
+                        $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)', [$k, $v, $nowIso]);
+                    }
                 }
             }
             $message = 'Pengaturan API Provider, Telegram, dan Tripay berhasil disimpan!';
+        } elseif ($action === 'toggle_provider') {
+            $provId = $_POST['provider_id'] ?? '';
+            $newStatus = (int)($_POST['new_status'] ?? 0);
+            $db->execute('UPDATE providers SET enabled = ?, updated_at = ? WHERE id = ? OR slug = ?', [$newStatus, gmdate('Y-m-d H:i:s'), $provId, $provId]);
+            $message = 'Status provider AI berhasil diperbarui!';
+        } elseif ($action === 'add_provider') {
+            $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)($_POST['slug'] ?? ''))));
+            $displayName = trim((string)($_POST['display_name'] ?? ''));
+            $baseUrl = trim((string)($_POST['base_url'] ?? ''));
+            $apiKey = trim((string)($_POST['api_key'] ?? ''));
+
+            if ($slug === '' || $displayName === '') {
+                throw new Exception('Slug dan Nama Provider wajib diisi.');
+            }
+
+            $existing = $db->fetchOne('SELECT id FROM providers WHERE slug = ?', [$slug]);
+            if ($existing) {
+                throw new Exception("Provider dengan slug '{$slug}' sudah terdaftar.");
+            }
+
+            $provId = Security::generateId('prov');
+            $nowIso = gmdate('Y-m-d H:i:s');
+            $db->execute(
+                'INSERT INTO providers (id, slug, display_name, enabled, commercial_use_approved, terms_checked_at, created_at, updated_at) VALUES (?, ?, ?, 1, 1, ?, ?, ?)',
+                [$provId, $slug, $displayName, $nowIso, $nowIso, $nowIso]
+            );
+
+            $slugUpper = strtoupper(preg_replace('/[^a-zA-Z0-9_]/', '_', $slug));
+            if ($baseUrl !== '') {
+                $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)', ["PROVIDER_{$slugUpper}_BASE_URL", $baseUrl, $nowIso]);
+            }
+            if ($apiKey !== '') {
+                $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)', ["PROVIDER_{$slugUpper}_API_KEY", $apiKey, $nowIso]);
+            }
+
+            $message = "Provider '{$displayName}' ({$slug}) berhasil ditambahkan dan siap digunakan!";
         } elseif ($action === 'toggle_model') {
             $modelId = $_POST['model_id'] ?? '';
             $newStatus = (int)($_POST['new_status'] ?? 0);
@@ -212,6 +252,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action !== 'admin_login') {
 }
 
 // Fetch Data for Tabs
+try {
+    \Ciptaone\Services\RouterService::ensureDefaultProviders($db);
+} catch (\Throwable) {}
+
 $settingsRows = [];
 try {
     $rows = $db->fetchAll('SELECT setting_key, setting_value FROM system_settings');
@@ -222,6 +266,13 @@ try {
 
 $openrouterKey = $settingsRows['OPENROUTER_API_KEY'] ?? (string)$config->get('OPENROUTER_API_KEY', '');
 $openaiKey = $settingsRows['OPENAI_API_KEY'] ?? (string)$config->get('OPENAI_API_KEY', '');
+$groqKey = $settingsRows['GROQ_API_KEY'] ?? (string)$config->get('GROQ_API_KEY', '');
+$deepseekKey = $settingsRows['DEEPSEEK_API_KEY'] ?? (string)$config->get('DEEPSEEK_API_KEY', '');
+$geminiKey = $settingsRows['GEMINI_API_KEY'] ?? (string)$config->get('GEMINI_API_KEY', '');
+$mistralKey = $settingsRows['MISTRAL_API_KEY'] ?? (string)$config->get('MISTRAL_API_KEY', '');
+$customBaseUrl = $settingsRows['CUSTOM_PROVIDER_BASE_URL'] ?? (string)$config->get('CUSTOM_PROVIDER_BASE_URL', '');
+$customKey = $settingsRows['CUSTOM_PROVIDER_API_KEY'] ?? (string)$config->get('CUSTOM_PROVIDER_API_KEY', '');
+
 $telegramToken = $settingsRows['TELEGRAM_BOT_TOKEN'] ?? (string)$config->get('TELEGRAM_BOT_TOKEN', '');
 $telegramAdmins = $settingsRows['TELEGRAM_ADMIN_IDS'] ?? (string)$config->get('TELEGRAM_ADMIN_IDS', '');
 $tripayApiKey = $settingsRows['TRIPAY_API_KEY'] ?? (string)$config->get('TRIPAY_API_KEY', '');
@@ -229,6 +280,7 @@ $tripayPrivKey = $settingsRows['TRIPAY_PRIVATE_KEY'] ?? (string)$config->get('TR
 $tripayMerchant = $settingsRows['TRIPAY_MERCHANT_CODE'] ?? (string)$config->get('TRIPAY_MERCHANT_CODE', '');
 $tripayMode = $settingsRows['TRIPAY_MODE'] ?? (string)$config->get('TRIPAY_MODE', 'sandbox');
 
+$providers = $db->fetchAll('SELECT * FROM providers ORDER BY enabled DESC, display_name ASC');
 $models = $db->fetchAll('SELECT m.*, p.slug as provider_slug FROM models m JOIN providers p ON m.provider_id = p.id ORDER BY m.public_id ASC');
 $topups = $db->fetchAll('SELECT t.*, u.email_normalized as user_email FROM topups t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC LIMIT 50');
 $usersList = $db->fetchAll('SELECT u.id, u.email_normalized, u.role, u.status, u.created_at, w.balance_credits FROM users u LEFT JOIN wallets w ON u.id = w.user_id ORDER BY u.created_at DESC LIMIT 50');
@@ -450,6 +502,121 @@ $activeTab = $_GET['tab'] ?? 'settings';
                         <input type="password" name="OPENAI_API_KEY" placeholder="<?php echo $openaiKey ? 'Masukkan kunci baru untuk mengganti...' : 'sk-proj-xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
                     </div>
 
+                    <!-- Provider 3: Groq Cloud (LPU Ultra-Fast) -->
+                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </div>
+                                <span class="font-bold text-sm text-white">3. Groq Cloud (LPU Ultra-Fast) API Key</span>
+                            </div>
+
+                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $groqKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                <span class="w-1.5 h-1.5 rounded-full <?php echo $groqKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                <span><?php echo $groqKey ? 'Aktif (' . substr($groqKey, 0, 7) . '••••••••' . substr($groqKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">Inference kecepatan kilat 500+ token/detik untuk LLaMA 3.3 70B & DeepSeek R1 Distill via Groq LPU.</p>
+                        <input type="password" name="GROQ_API_KEY" placeholder="<?php echo $groqKey ? 'Masukkan kunci baru untuk mengganti...' : 'gsk_xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
+                    </div>
+
+                    <!-- Provider 4: DeepSeek Direct -->
+                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                    </svg>
+                                </div>
+                                <span class="font-bold text-sm text-white">4. DeepSeek Direct API Key</span>
+                            </div>
+
+                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $deepseekKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                <span class="w-1.5 h-1.5 rounded-full <?php echo $deepseekKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                <span><?php echo $deepseekKey ? 'Aktif (' . substr($deepseekKey, 0, 7) . '••••••••' . substr($deepseekKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">Koneksi langsung ke DeepSeek V3 (Chat) & R1 (Reasoner) dengan harga termurah di dunia via api.deepseek.com.</p>
+                        <input type="password" name="DEEPSEEK_API_KEY" placeholder="<?php echo $deepseekKey ? 'Masukkan kunci baru untuk mengganti...' : 'sk-xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
+                    </div>
+
+                    <!-- Provider 5: Google Gemini Direct -->
+                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                    </svg>
+                                </div>
+                                <span class="font-bold text-sm text-white">5. Google Gemini API Key</span>
+                            </div>
+
+                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $geminiKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                <span class="w-1.5 h-1.5 rounded-full <?php echo $geminiKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                <span><?php echo $geminiKey ? 'Aktif (' . substr($geminiKey, 0, 7) . '••••••••' . substr($geminiKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">Akses resmi Google AI Studio (Gemini 2.0 Flash, Gemini 1.5 Pro) menggunakan endpoint OpenAI-compatible resmi Google.</p>
+                        <input type="password" name="GEMINI_API_KEY" placeholder="<?php echo $geminiKey ? 'Masukkan kunci baru untuk mengganti...' : 'AIzaSyxxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
+                    </div>
+
+                    <!-- Provider 6: Mistral AI Direct -->
+                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-7 h-7 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                </div>
+                                <span class="font-bold text-sm text-white">6. Mistral AI Direct API Key</span>
+                            </div>
+
+                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $mistralKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                <span class="w-1.5 h-1.5 rounded-full <?php echo $mistralKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                <span><?php echo $mistralKey ? 'Aktif (' . substr($mistralKey, 0, 7) . '••••••••' . substr($mistralKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">Akses model resmi Mistral Large, Codestral, dan Ministral via api.mistral.ai.</p>
+                        <input type="password" name="MISTRAL_API_KEY" placeholder="<?php echo $mistralKey ? 'Masukkan kunci baru untuk mengganti...' : 'xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
+                    </div>
+
+                    <!-- Provider 7: Custom / Self-Hosted OpenAI Endpoint (Ollama / vLLM) -->
+                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                                    </svg>
+                                </div>
+                                <span class="font-bold text-sm text-white">7. Custom / Local AI Endpoint (Ollama / vLLM / LM Studio)</span>
+                            </div>
+
+                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $customBaseUrl ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                <span class="w-1.5 h-1.5 rounded-full <?php echo $customBaseUrl ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                <span><?php echo $customBaseUrl ? 'Terkonfigurasi' : 'Belum Diisi'; ?></span>
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">Hubungkan router ke server AI lokal milik sendiri atau provider custom manapun yang kompatibel dengan format OpenAI.</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Base URL Endpoint</label>
+                                <input type="text" name="CUSTOM_PROVIDER_BASE_URL" value="<?php echo htmlspecialchars($customBaseUrl); ?>" placeholder="http://localhost:11434/v1" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">API Key (Opsional / Dummy jika lokal)</label>
+                                <input type="password" name="CUSTOM_PROVIDER_API_KEY" placeholder="<?php echo $customKey ? '••••••••' : 'Kosongkan jika Ollama lokal'; ?>" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Provider 3: Telegram Bot -->
                     <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-4">
                         <div class="flex items-center justify-between">
@@ -570,9 +737,11 @@ $activeTab = $_GET['tab'] ?? 'settings';
                         <div>
                             <label class="block font-bold text-slate-300 uppercase mb-1.5">Provider</label>
                             <select name="provider_slug" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold">
-                                <option value="openrouter">OpenRouter</option>
-                                <option value="openai">OpenAI</option>
-                                <option value="mock">Mock</option>
+                                <?php foreach ($providers as $prov): ?>
+                                    <option value="<?php echo htmlspecialchars($prov['slug']); ?>" <?php echo !$prov['enabled'] ? 'class="text-slate-500"' : ''; ?>>
+                                        <?php echo htmlspecialchars($prov['display_name']); ?><?php echo $prov['enabled'] ? '' : ' (Nonaktif)'; ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div>
@@ -642,6 +811,99 @@ $activeTab = $_GET['tab'] ?? 'settings';
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Providers Management Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                <span>Daftar Provider AI Terdaftar</span>
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">Aktifkan atau matikan provider secara instan. Semua model di bawah provider yang dinonaktifkan akan otomatis berhenti melayani permintaan.</p>
+                        </div>
+                    </div>
+
+                    <!-- Provider List Table -->
+                    <div class="border border-slate-800 rounded-xl overflow-hidden">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-5 py-3">Nama Provider</th>
+                                    <th class="px-5 py-3">Slug</th>
+                                    <th class="px-5 py-3">Status</th>
+                                    <th class="px-5 py-3 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/80">
+                                <?php foreach ($providers as $prov): ?>
+                                    <tr class="hover:bg-slate-800/40 transition">
+                                        <td class="px-5 py-3 font-bold text-white"><?php echo htmlspecialchars($prov['display_name']); ?></td>
+                                        <td class="px-5 py-3 font-mono text-slate-300"><?php echo htmlspecialchars($prov['slug']); ?></td>
+                                        <td class="px-5 py-3">
+                                            <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase <?php echo $prov['enabled'] ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500 border border-slate-700'; ?>">
+                                                <span class="w-1.5 h-1.5 rounded-full <?php echo $prov['enabled'] ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                                <span><?php echo $prov['enabled'] ? 'Aktif' : 'Nonaktif'; ?></span>
+                                            </span>
+                                        </td>
+                                        <td class="px-5 py-3 text-right">
+                                            <form method="POST" class="inline">
+                                                <input type="hidden" name="admin_action" value="toggle_provider">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
+                                                <input type="hidden" name="provider_id" value="<?php echo htmlspecialchars($prov['id']); ?>">
+                                                <input type="hidden" name="new_status" value="<?php echo $prov['enabled'] ? '0' : '1'; ?>">
+                                                <button type="submit" class="inline-flex items-center space-x-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition <?php echo $prov['enabled'] ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'; ?>">
+                                                    <span><?php echo $prov['enabled'] ? 'Nonaktifkan' : 'Aktifkan'; ?></span>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Add Custom Provider Form -->
+                    <div class="pt-4 border-t border-slate-800">
+                        <h4 class="text-xs font-bold text-slate-300 uppercase mb-3 flex items-center space-x-1.5">
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>Daftarkan Provider Kustom Baru (Any OpenAI-Compatible)</span>
+                        </h4>
+                        <form method="POST" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                            <input type="hidden" name="admin_action" value="add_provider">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
+
+                            <div>
+                                <label class="block font-semibold text-slate-400 mb-1">Provider Slug</label>
+                                <input type="text" name="slug" required placeholder="misal: together, novita" class="w-full px-3 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-400 mb-1">Display Name</label>
+                                <input type="text" name="display_name" required placeholder="misal: Together AI" class="w-full px-3 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-400 mb-1">Base URL (Opsional)</label>
+                                <input type="text" name="base_url" placeholder="https://api.together.xyz/v1" class="w-full px-3 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-400 mb-1">API Key (Opsional)</label>
+                                <input type="password" name="api_key" placeholder="Kunci API Upstream" class="w-full px-3 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+                            </div>
+                            <div class="sm:col-span-2 lg:col-span-4 flex justify-end">
+                                <button type="submit" class="py-2 px-5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 transition flex items-center space-x-1.5 shadow">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span>Simpan Provider Baru</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 

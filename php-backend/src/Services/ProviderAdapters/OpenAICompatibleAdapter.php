@@ -18,7 +18,11 @@ class OpenAICompatibleAdapter extends BaseProviderAdapter
     public function __construct(string $baseUrl, string $apiKey)
     {
         $this->baseUrl = rtrim($baseUrl, '/');
-        $this->apiKey = trim($apiKey);
+        $trimmedKey = trim($apiKey);
+        if ($trimmedKey === '' && (str_contains($this->baseUrl, 'localhost') || str_contains($this->baseUrl, '127.0.0.1'))) {
+            $trimmedKey = 'local-no-key';
+        }
+        $this->apiKey = $trimmedKey;
     }
 
     public function chatCompletion(
