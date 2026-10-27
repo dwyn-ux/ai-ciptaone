@@ -9,7 +9,6 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
-  ShieldCheck,
   Wallet,
 } from "lucide-react";
 
@@ -164,20 +163,6 @@ export const Navbar: React.FC = () => {
               <BookOpen className="w-4 h-4" />
               <span>Dokumentasi</span>
             </Link>
-
-            {user.role === "admin" && (
-              <Link
-                to="/admin"
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1.5 ${
-                  isActive("/admin")
-                    ? "bg-amber-100 text-amber-900 font-semibold"
-                    : "text-amber-700 hover:bg-amber-50"
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4 text-amber-600" />
-                <span>Admin Panel</span>
-              </Link>
-            )}
           </nav>
         </div>
 

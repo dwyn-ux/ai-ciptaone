@@ -677,7 +677,6 @@ console.log(completion.choices[0].message.content);`,
             <Link to="/docs" className="hover:text-slate-300 transition-colors">Dokumentasi</Link>
             <Link to="/playground" className="hover:text-slate-300 transition-colors">Playground</Link>
             <a href="/openapi.json" target="_blank" className="hover:text-slate-300 transition-colors">OpenAPI Spec</a>
-            <a href="/admin.php" className="hover:text-slate-300 transition-colors">Admin Panel</a>
           </div>
         </div>
       </footer>
