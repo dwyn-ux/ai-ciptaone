@@ -47,37 +47,73 @@ if ($action === 'logout') {
     exit;
 }
 
-// 3. Handle Admin Login Form Action
+// 3. Handle Admin Login Form Action & First Admin Bootstrap
 $loginError = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'admin_login') {
-    $email = trim((string)($_POST['email'] ?? ''));
-    $password = (string)($_POST['password'] ?? '');
+$adminCount = 0;
+try {
+    $row = $db->fetchOne("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
+    $adminCount = (int)($row['count'] ?? 0);
+} catch (\Throwable) {}
 
-    try {
-        [$user, $rawToken] = $authService->login($email, $password);
-        if (($user['role'] ?? '') !== 'admin') {
-            throw new Exception('Akses ditolak: Akun Anda tidak memiliki hak akses administrator.');
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($action === 'init_admin') {
+        $email = trim((string)($_POST['email'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
+        $confirmPassword = (string)($_POST['confirm_password'] ?? '');
+
+        try {
+            if ($adminCount > 0) {
+                throw new Exception('Akun administrator sudah terdaftar. Silakan login.');
+            }
+            if ($password !== $confirmPassword) {
+                throw new Exception('Konfirmasi kata sandi tidak cocok.');
+            }
+            if (strlen($password) < 8) {
+                throw new Exception('Kata sandi minimal 8 karakter.');
+            }
+
+            $user = $authService->register($email, $password);
+            $db->execute("UPDATE users SET role = 'admin' WHERE id = ?", [$user['id']]);
+
+            [$loggedInUser, $rawToken] = $authService->login($email, $password);
+            $secureCookie = !$isLocal && (($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['SERVER_PORT'] ?? '') === '443');
+            setcookie($cookieName, $rawToken, time() + 604800, '/', '', $secureCookie, true);
+
+            header('Location: /admin.php');
+            exit;
+        } catch (\Throwable $e) {
+            $loginError = $e->getMessage();
         }
+    } elseif ($action === 'admin_login') {
+        $email = trim((string)($_POST['email'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
 
-        $secureCookie = !$isLocal && (($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['SERVER_PORT'] ?? '') === '443');
-        setcookie(
-            $cookieName,
-            $rawToken,
-            time() + 604800,
-            '/',
-            '',
-            $secureCookie,
-            true
-        );
+        try {
+            [$user, $rawToken] = $authService->login($email, $password);
+            if (($user['role'] ?? '') !== 'admin') {
+                throw new Exception('Akses ditolak: Akun Anda tidak memiliki hak akses administrator.');
+            }
 
-        header('Location: /admin.php');
-        exit;
-    } catch (\Throwable $e) {
-        $loginError = $e->getMessage();
+            $secureCookie = !$isLocal && (($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['SERVER_PORT'] ?? '') === '443');
+            setcookie(
+                $cookieName,
+                $rawToken,
+                time() + 604800,
+                '/',
+                '',
+                $secureCookie,
+                true
+            );
+
+            header('Location: /admin.php');
+            exit;
+        } catch (\Throwable $e) {
+            $loginError = $e->getMessage();
+        }
     }
 }
 
-// 4. Gatekeeper: If not admin, render secure login page and EXIT immediately!
+// 4. Gatekeeper: If not admin, render secure login or initial setup page and EXIT immediately!
 if (!$isAdmin) {
     ?>
     <!DOCTYPE html>
@@ -85,7 +121,7 @@ if (!$isAdmin) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Login Administrator — AI Ciptaone Router</title>
+        <title><?php echo $adminCount === 0 ? 'Setup Administrator Pertama' : 'Login Administrator'; ?> — AI Ciptaone Router</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -94,39 +130,81 @@ if (!$isAdmin) {
     </head>
     <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
         <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6">
-            <div class="text-center space-y-2">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto text-white shadow-lg shadow-indigo-500/25">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+            <?php if ($adminCount === 0): ?>
+                <!-- Initial Setup View -->
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center mx-auto text-white shadow-lg shadow-emerald-500/25">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-xl font-extrabold text-white tracking-tight">Setup Admin Pertama</h1>
+                    <p class="text-xs text-slate-400">Belum ada akun admin di database. Buat akun administrator utama Anda untuk mulai mengelola router.</p>
                 </div>
-                <h1 class="text-xl font-extrabold text-white tracking-tight">AI Ciptaone Control Center</h1>
-                <p class="text-xs text-slate-400">Silakan masuk menggunakan akun administrator terverifikasi.</p>
-            </div>
 
-            <?php if ($loginError): ?>
-                <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-semibold text-rose-300 flex items-center space-x-2">
-                    <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span><?php echo htmlspecialchars($loginError); ?></span>
+                <?php if ($loginError): ?>
+                    <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-semibold text-rose-300 flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span><?php echo htmlspecialchars($loginError); ?></span>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" class="space-y-4">
+                    <input type="hidden" name="admin_action" value="init_admin">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email Administrator</label>
+                        <input type="email" name="email" required placeholder="admin@ciptaone.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Kata Sandi (Minimal 8 Karakter)</label>
+                        <input type="password" name="password" required placeholder="••••••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Konfirmasi Kata Sandi</label>
+                        <input type="password" name="confirm_password" required placeholder="••••••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+                        <span>Buat Akun & Masuk</span>
+                    </button>
+                </form>
+            <?php else: ?>
+                <!-- Standard Login View -->
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto text-white shadow-lg shadow-indigo-500/25">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-xl font-extrabold text-white tracking-tight">AI Ciptaone Control Center</h1>
+                    <p class="text-xs text-slate-400">Silakan masuk menggunakan akun administrator terverifikasi.</p>
                 </div>
+
+                <?php if ($loginError): ?>
+                    <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-semibold text-rose-300 flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span><?php echo htmlspecialchars($loginError); ?></span>
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" class="space-y-4">
+                    <input type="hidden" name="admin_action" value="admin_login">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email Administrator</label>
+                        <input type="email" name="email" required placeholder="admin@ciptaone.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Kata Sandi</label>
+                        <input type="password" name="password" required placeholder="••••••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+                        <span>Masuk ke Dashboard</span>
+                    </button>
+                </form>
             <?php endif; ?>
-
-            <form method="POST" class="space-y-4">
-                <input type="hidden" name="admin_action" value="admin_login">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email Administrator</label>
-                    <input type="email" name="email" required placeholder="admin@ciptaone.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Kata Sandi</label>
-                    <input type="password" name="password" required placeholder="••••••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600">
-                </div>
-                <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
-                    <span>Masuk ke Dashboard</span>
-                </button>
-            </form>
         </div>
     </body>
     </html>
