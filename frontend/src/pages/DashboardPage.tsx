@@ -58,30 +58,30 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-sm">
+      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 text-white relative overflow-hidden shadow-sm">
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/30 text-indigo-200 text-xs font-semibold mb-4 backdrop-blur-sm border border-indigo-400/20">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/30 text-indigo-200 text-xs font-semibold mb-3 sm:mb-4 backdrop-blur-sm border border-indigo-400/20">
             <Sparkles className="w-3.5 h-3.5" />
             <span>AI Router Universal Gateway</span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Selamat datang, {user?.email.split("@")[0]}!
           </h1>
-          <p className="mt-2 text-indigo-100 text-sm leading-relaxed">
+          <p className="mt-2 text-indigo-100 text-xs sm:text-sm leading-relaxed">
             Gunakan playground untuk menguji prompt di berbagai model AI, atau integrasikan endpoint kompatibel OpenAI menggunakan API key Anda.
           </p>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-5 sm:mt-6 flex flex-wrap gap-2.5 sm:gap-3">
             <Link
               to="/playground"
-              className="inline-flex items-center px-4 py-2 rounded-xl bg-white text-indigo-900 font-semibold text-sm hover:bg-indigo-50 transition shadow-sm"
+              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-white text-indigo-900 font-semibold text-xs sm:text-sm hover:bg-indigo-50 transition shadow-sm"
             >
               <Cpu className="w-4 h-4 mr-2 text-indigo-600" />
               Buka Playground
             </Link>
             <Link
               to="/topup"
-              className="inline-flex items-center px-4 py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold text-sm transition border border-indigo-400/30 backdrop-blur-sm"
+              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm transition border border-indigo-400/30 backdrop-blur-sm"
             >
               <Coins className="w-4 h-4 mr-2" />
               Isi Ulang Saldo
@@ -94,7 +94,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Wallet Balance Card */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>

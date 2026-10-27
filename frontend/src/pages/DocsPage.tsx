@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   BookOpen,
   Check,
+  ChevronDown,
   ChevronRight,
   Code,
   Copy,
@@ -64,6 +65,7 @@ export const DocsPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState("deepseek/deepseek-chat");
   const [testPrompt, setTestPrompt] = useState("Jelaskan cara kerja AI Router dalam satu kalimat.");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const baseUrl = window.location.origin;
 
@@ -239,44 +241,60 @@ echo $result['choices'][0]['message']['content'] ?? $response;`;
       {/* Grid Layout: Sidebar & Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Sticky Sidebar Nav */}
-        <aside className="lg:col-span-3 sticky top-24 space-y-4">
+        <aside className="lg:col-span-3 lg:sticky lg:top-24 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Cari endpoint..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+            {/* Mobile Sidebar Toggle Button */}
+            <button
+              onClick={() => setMobileNavOpen(!mobileNavOpen)}
+              className="lg:hidden w-full flex items-center justify-between text-xs font-bold text-slate-800 p-1"
+            >
+              <div className="flex items-center space-x-2 text-indigo-600">
+                <BookOpen className="w-4 h-4" />
+                <span>Daftar Isi Dokumentasi ({sections.length} Topik)</span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${mobileNavOpen ? "rotate-180" : ""}`} />
+            </button>
 
-            <nav className="space-y-1 text-xs">
-              {sections
-                .filter(
-                  (s) =>
-                    !searchQuery ||
-                    s.label.toLowerCase().includes(searchQuery.toLowerCase())
-                )
-                .map((s) => {
-                  const Icon = s.icon;
-                  return (
-                    <a
-                      key={s.id}
-                      href={`#${s.id}`}
-                      className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-50 font-medium transition"
-                    >
-                      <Icon className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="truncate">{s.label}</span>
-                    </a>
-                  );
-                })}
-            </nav>
+            {/* Nav Container (Always visible on lg, toggled on mobile) */}
+            <div className={`space-y-3 ${mobileNavOpen ? "block" : "hidden lg:block"}`}>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Cari endpoint..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <nav className="space-y-1 text-xs">
+                {sections
+                  .filter(
+                    (s) =>
+                      !searchQuery ||
+                      s.label.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((s) => {
+                    const Icon = s.icon;
+                    return (
+                      <a
+                        key={s.id}
+                        href={`#${s.id}`}
+                        onClick={() => setMobileNavOpen(false)}
+                        className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-50 font-medium transition"
+                      >
+                        <Icon className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span className="truncate">{s.label}</span>
+                      </a>
+                    );
+                  })}
+              </nav>
+            </div>
           </div>
 
           {/* Quick links box */}
-          <div className="bg-indigo-50/60 rounded-2xl border border-indigo-100 p-4 space-y-2 text-xs">
+          <div className="hidden lg:block bg-indigo-50/60 rounded-2xl border border-indigo-100 p-4 space-y-2 text-xs">
             <div className="font-bold text-indigo-950 flex items-center space-x-1.5">
               <BookOpen className="w-4 h-4 text-indigo-600" />
               <span>Butuh API Key?</span>

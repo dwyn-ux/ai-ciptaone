@@ -224,20 +224,20 @@ export const PlaygroundPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] min-h-[550px] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-7.5rem)] sm:h-[calc(100vh-11rem)] min-h-[460px] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       {/* Top Header Bar */}
-      <div className="px-6 py-3.5 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-4">
+      <div className="px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
         {/* Model Selector */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <Cpu className="w-4 h-4 text-indigo-600" />
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-wrap gap-y-1">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
+            <Cpu className="w-4 h-4 text-indigo-600 shrink-0" />
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Model:</span>
           </div>
 
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
-            className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+            className="px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm max-w-[200px] sm:max-w-none truncate"
           >
             {models.map((m) => (
               <option key={m.public_id} value={m.public_id}>
@@ -307,7 +307,7 @@ export const PlaygroundPage: React.FC = () => {
             </div>
 
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm leading-relaxed ${
                 m.role === "user"
                   ? "bg-slate-900 text-white shadow-sm"
                   : "bg-slate-100 text-slate-900 border border-slate-200/60"

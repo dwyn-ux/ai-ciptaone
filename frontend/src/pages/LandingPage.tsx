@@ -19,12 +19,14 @@ import {
   KeyRound,
   Layers,
   Lock,
+  Menu,
   Play,
   QrCode,
   ShieldCheck,
   Sparkles,
   Terminal,
   Wallet,
+  X,
   Zap,
 } from "lucide-react";
 
@@ -34,6 +36,7 @@ export const LandingPage: React.FC = () => {
   const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [promptTokens, setPromptTokens] = useState<number>(5000);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const baseUrl = window.location.origin;
 
@@ -170,22 +173,22 @@ console.log(completion.choices[0].message.content);`,
       </div>
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80">
+      <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2.5 group">
+          <Link to="/" className="flex items-center space-x-2.5 group shrink-0">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
               <Cpu className="w-5 h-5" />
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5">
               <span className="font-extrabold text-base tracking-tight text-white">AI Ciptaone</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/30">
+              <span className="hidden xs:inline-block text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/30">
                 AI Router
               </span>
             </div>
           </Link>
 
-          {/* Nav links */}
-          <nav className="hidden md:flex items-center space-x-6 text-xs font-semibold text-slate-300">
+          {/* Desktop Nav links */}
+          <nav className="hidden lg:flex items-center space-x-5 text-xs font-semibold text-slate-300">
             <a href="#fitur" className="hover:text-indigo-400 transition-colors">Keunggulan</a>
             <a href="#models" className="hover:text-indigo-400 transition-colors">Katalog Model</a>
             <a href="#kalkulator" className="hover:text-indigo-400 transition-colors">Tarif Rupiah</a>
@@ -196,161 +199,237 @@ console.log(completion.choices[0].message.content);`,
             </Link>
           </nav>
 
-          {/* Action CTAs */}
-          <div className="flex items-center space-x-3 text-xs">
+          {/* Action CTAs & Mobile Toggle */}
+          <div className="flex items-center space-x-2 sm:space-x-3 text-xs">
             {user ? (
               <Link
                 to="/dashboard"
-                className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-sm shadow-indigo-600/30"
+                className="flex items-center space-x-1.5 px-3.5 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-sm shadow-indigo-600/30"
               >
-                <span>Buka Dashboard</span>
+                <span>Dashboard</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             ) : (
               <>
                 <Link
                   to="/login"
-                  className="px-3.5 py-2 rounded-xl text-slate-300 hover:text-white font-medium hover:bg-slate-900 transition-colors"
+                  className="px-3 py-2 rounded-xl text-slate-300 hover:text-white font-medium hover:bg-slate-900 transition-colors"
                 >
                   Masuk
                 </Link>
                 <Link
                   to="/register"
-                  className="flex items-center space-x-1 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold transition-all shadow-md shadow-indigo-600/25"
+                  className="hidden sm:flex items-center space-x-1 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold transition-all shadow-md shadow-indigo-600/25"
                 >
-                  <span>Mulai Sekarang</span>
+                  <span>Mulai</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </>
             )}
+
+            {/* Mobile Hamburger Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition focus:outline-none"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-slate-800 bg-slate-950 px-4 pt-3 pb-6 space-y-3 shadow-2xl">
+            <nav className="space-y-1 text-sm font-medium text-slate-300">
+              <a
+                href="#fitur"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2.5 rounded-xl hover:bg-slate-900 hover:text-white transition"
+              >
+                Keunggulan
+              </a>
+              <a
+                href="#models"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2.5 rounded-xl hover:bg-slate-900 hover:text-white transition"
+              >
+                Katalog Model
+              </a>
+              <a
+                href="#kalkulator"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2.5 rounded-xl hover:bg-slate-900 hover:text-white transition"
+              >
+                Tarif Rupiah
+              </a>
+              <a
+                href="#faq"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2.5 rounded-xl hover:bg-slate-900 hover:text-white transition"
+              >
+                Tanya Jawab
+              </a>
+              <Link
+                to="/docs"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center space-x-2 px-3 py-2.5 rounded-xl text-indigo-400 hover:bg-slate-900 transition"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Dokumentasi API</span>
+              </Link>
+            </nav>
+
+            {!user && (
+              <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-2">
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 rounded-xl text-sm font-semibold border border-slate-800 text-slate-300 hover:bg-slate-900 transition"
+                >
+                  Masuk
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition shadow-sm"
+                >
+                  Mulai Sekarang
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-12 pb-20 sm:pt-20 sm:pb-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+      <section className="relative pt-10 pb-16 sm:pt-16 sm:pb-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 sm:space-y-8">
         
         {/* Announcement Pill */}
-        <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-xs font-semibold backdrop-blur-sm animate-pulse">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Universal AI Router • 100% Kompatibel Format OpenAI</span>
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-xs font-semibold backdrop-blur-sm">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+          <span className="truncate max-w-[280px] xs:max-w-none">Universal AI Router • 100% Format OpenAI</span>
         </div>
 
         {/* Headline */}
-        <div className="max-w-4xl mx-auto space-y-4">
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-[1.15]">
+        <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
+          <h1 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.18] sm:leading-[1.15]">
             Semua Model AI Terbaik Dunia,{" "}
             <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
               Satu Saldo & Satu API Key.
             </span>
           </h1>
-          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xs sm:text-base lg:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
             Hentikan langganan bulanan dollar ($) yang mahal. Akses <strong>DeepSeek V3</strong>, <strong>GPT-4o</strong>, <strong>Claude 3.5 Sonnet</strong>, dan <strong>Mistral</strong> dengan top-up saldo via <strong>QRIS & Bank Lokal</strong>. Hemat hingga 80% biaya token!
           </p>
         </div>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-md sm:max-w-none mx-auto w-full">
           <Link
             to="/register"
-            className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all hover:scale-[1.02]"
+            className="w-full sm:w-auto px-6 sm:px-7 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all hover:scale-[1.02]"
           >
-            <Zap className="w-4 h-4 fill-white" />
+            <Zap className="w-4 h-4 fill-white shrink-0" />
             <span>Daftar Akun Gratis</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 shrink-0" />
           </Link>
 
           <Link
             to="/docs"
-            className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 text-sm font-semibold flex items-center justify-center space-x-2 transition-all"
+            className="w-full sm:w-auto px-5 sm:px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 text-sm font-semibold flex items-center justify-center space-x-2 transition-all"
           >
-            <BookOpen className="w-4 h-4 text-indigo-400" />
-            <span>Baca Dokumentasi API</span>
+            <BookOpen className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span>Dokumentasi API</span>
           </Link>
 
           <Link
             to="/playground"
-            className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 text-slate-300 border border-slate-800 text-sm font-semibold flex items-center justify-center space-x-2 transition-all"
+            className="w-full sm:w-auto px-5 sm:px-6 py-3.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 text-slate-300 border border-slate-800 text-sm font-semibold flex items-center justify-center space-x-2 transition-all"
           >
-            <Play className="w-4 h-4 text-emerald-400 fill-emerald-400/20" />
-            <span>Coba Playground</span>
+            <Play className="w-4 h-4 text-emerald-400 fill-emerald-400/20 shrink-0" />
+            <span>Playground</span>
           </Link>
         </div>
 
         {/* Value Badges */}
-        <div className="pt-4 flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-xs text-slate-400">
+        <div className="pt-2 flex flex-wrap items-center justify-center gap-y-2 gap-x-4 sm:gap-x-6 text-[11px] sm:text-xs text-slate-400">
           <div className="flex items-center space-x-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
             <span>1 Kredit = Rp 1,00</span>
           </div>
           <div className="flex items-center space-x-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
             <span>Tanpa Kartu Kredit Luar Negeri</span>
           </div>
           <div className="flex items-center space-x-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
             <span>Reservasi Kredit Atomik (Anti Minus)</span>
           </div>
           <div className="flex items-center space-x-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
             <span>Streaming SSE Ultra Cepat</span>
           </div>
         </div>
 
         {/* Hero Code Terminal Window */}
-        <div className="pt-6 max-w-4xl mx-auto text-left">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="pt-4 max-w-4xl mx-auto text-left w-full">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden w-full">
             {/* Window title bar */}
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-950/80 border-b border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-slate-950/90 border-b border-slate-800">
               <div className="flex items-center space-x-2">
                 <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
                 <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
                 <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="text-xs font-mono text-slate-400 ml-2">Quickstart Drop-in Replacement</span>
+                <span className="text-xs font-mono text-slate-400 ml-1.5 hidden sm:inline">Quickstart Drop-in</span>
               </div>
 
-              {/* Tabs */}
-              <div className="flex items-center space-x-1 bg-slate-900 p-0.5 rounded-lg text-xs font-mono">
+              {/* Tabs & Copy Button */}
+              <div className="flex items-center space-x-2 ml-auto sm:ml-0">
+                <div className="flex items-center space-x-1 bg-slate-900 p-0.5 rounded-lg text-xs font-mono">
+                  <button
+                    onClick={() => setActiveCodeTab("python")}
+                    className={`px-2 sm:px-2.5 py-1 rounded transition ${activeCodeTab === "python" ? "bg-indigo-600 text-white font-bold" : "text-slate-400 hover:text-white"}`}
+                  >
+                    Python
+                  </button>
+                  <button
+                    onClick={() => setActiveCodeTab("curl")}
+                    className={`px-2 sm:px-2.5 py-1 rounded transition ${activeCodeTab === "curl" ? "bg-indigo-600 text-white font-bold" : "text-slate-400 hover:text-white"}`}
+                  >
+                    cURL
+                  </button>
+                  <button
+                    onClick={() => setActiveCodeTab("node")}
+                    className={`px-2 sm:px-2.5 py-1 rounded transition ${activeCodeTab === "node" ? "bg-indigo-600 text-white font-bold" : "text-slate-400 hover:text-white"}`}
+                  >
+                    Node.js
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => setActiveCodeTab("python")}
-                  className={`px-2.5 py-1 rounded transition ${activeCodeTab === "python" ? "bg-indigo-600 text-white font-bold" : "text-slate-400 hover:text-white"}`}
+                  onClick={() => copyCode(codeSnippets[activeCodeTab])}
+                  className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
+                  title="Salin kode ke clipboard"
                 >
-                  Python
-                </button>
-                <button
-                  onClick={() => setActiveCodeTab("curl")}
-                  className={`px-2.5 py-1 rounded transition ${activeCodeTab === "curl" ? "bg-indigo-600 text-white font-bold" : "text-slate-400 hover:text-white"}`}
-                >
-                  cURL
-                </button>
-                <button
-                  onClick={() => setActiveCodeTab("node")}
-                  className={`px-2.5 py-1 rounded transition ${activeCodeTab === "node" ? "bg-indigo-600 text-white font-bold" : "text-slate-400 hover:text-white"}`}
-                >
-                  Node.js
+                  {copiedSnippet ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="hidden xs:inline">Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span className="hidden xs:inline">Salin</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
 
             {/* Code Body */}
-            <div className="p-4 sm:p-6 relative bg-slate-950">
-              <button
-                onClick={() => copyCode(codeSnippets[activeCodeTab])}
-                className="absolute top-4 right-4 flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
-              >
-                {copiedSnippet ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Tersalin!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Salin Kode</span>
-                  </>
-                )}
-              </button>
-              <pre className="overflow-x-auto text-xs sm:text-sm font-mono text-indigo-300 leading-relaxed pr-24">
+            <div className="p-3 sm:p-5 relative bg-slate-950 overflow-hidden">
+              <pre className="overflow-x-auto text-xs sm:text-sm font-mono text-indigo-300 leading-relaxed custom-scrollbar">
                 <code>{codeSnippets[activeCodeTab]}</code>
               </pre>
             </div>

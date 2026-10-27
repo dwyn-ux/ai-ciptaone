@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "../api/client";
 import {
   KeyRound,
@@ -163,12 +163,12 @@ export const ApiKeysPage: React.FC = () => {
           <pre>{`from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://ciptaone.com/v1",  # atau http://localhost:8000/v1
+    base_url="${window.location.origin}/v1",
     api_key="sk-live-your-api-key-here"
 )
 
 response = client.chat.completions.create(
-    model="mock/echo-v1",
+    model="deepseek/deepseek-chat",
     messages=[{"role": "user", "content": "Halo AI Router!"}]
 )
 print(response.choices[0].message.content)`}</pre>
