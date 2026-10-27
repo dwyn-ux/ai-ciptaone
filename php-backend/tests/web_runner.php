@@ -18,10 +18,10 @@ $config = Config::getInstance();
 $configuredSecret = (string)$config->get('SECRET_KEY', '');
 $providedSecret = $_GET['secret'] ?? '';
 
-// Require either matching SECRET_KEY or allow in local development
-$isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', '::ffff:127.0.0.1'], true)
-    || str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'localhost')
-    || str_starts_with($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1');
+// Require either matching SECRET_KEY or allow strictly in local development
+$isLocal = ($config->get('APP_ENV') === 'development')
+    && in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', '::ffff:127.0.0.1'], true);
+
 if (!$isLocal && ($providedSecret === '' || !hash_equals($configuredSecret, $providedSecret))) {
     http_response_code(403);
     header('Content-Type: text/plain; charset=utf-8');

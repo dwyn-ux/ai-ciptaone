@@ -201,6 +201,23 @@ class TopupService
 
         $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
         $cleanMime = strtolower(trim($contentType));
+
+        // Magic bytes inspection to prevent MIME spoofing
+        if (class_exists('\finfo')) {
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $detected = $finfo->buffer($fileBytes);
+            if ($detected !== false && !in_array($detected, $allowedMimes, true)) {
+                throw new AppError(
+                    ErrorCode::INVALID_REQUEST,
+                    'Format file tidak valid. Hanya file gambar asli (JPEG, PNG, WEBP) yang diizinkan.',
+                    400
+                );
+            }
+            if ($detected !== false) {
+                $cleanMime = $detected;
+            }
+        }
+
         if (!in_array($cleanMime, $allowedMimes, true)) {
             throw new AppError(
                 ErrorCode::INVALID_REQUEST,

@@ -94,6 +94,12 @@ class WebhookController extends BaseController
                 $orderId = (string)($verifiedData['order_id'] ?? '');
 
                 if (($verifiedData['status'] ?? '') === 'paid') {
+                    // Defensive amount check: ensure paid amount is not less than required invoice amount
+                    $topupRecord = $this->db->fetchOne('SELECT amount_minor FROM topups WHERE order_id = ?', [$orderId]);
+                    if ($topupRecord !== null && (int)($verifiedData['amount'] ?? 0) < (int)$topupRecord['amount_minor']) {
+                        throw new AppError(ErrorCode::INVALID_REQUEST, 'Nominal pembayaran webhook lebih kecil dari jumlah tagihan invoice.', 400);
+                    }
+
                     $this->topupService->reviewTopup(
                         $orderId,
                         'paid',

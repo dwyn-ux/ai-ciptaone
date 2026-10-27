@@ -26,24 +26,131 @@ $walletService = new WalletService($db);
 $auditService = new AuditService($db);
 $topupService = new TopupService($db, $config, $walletService, null, $auditService);
 
-$isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', '::ffff:127.0.0.1'], true)
-    || str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'localhost')
-    || str_starts_with($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1');
+// 1. Strict Environment & Auth Check (Never rely solely on spoofable HTTP_HOST)
+$isDev = $config->get('APP_ENV') === 'development';
+$clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+$isLocal = $isDev && in_array($clientIp, ['127.0.0.1', '::1', '::ffff:127.0.0.1'], true);
 
-// Auth check
-$sessionCookie = $_COOKIE[$config->get('SESSION_COOKIE_NAME', 'ciptaone_session')] ?? '';
+$cookieName = (string)$config->get('SESSION_COOKIE_NAME', 'ciptaone_session');
+$sessionCookie = $_COOKIE[$cookieName] ?? '';
 $currentUser = $sessionCookie ? $authService->getUserFromSession($sessionCookie) : null;
 $isAdmin = ($currentUser && ($currentUser['role'] ?? '') === 'admin') || $isLocal;
+
+// 2. Handle Logout Action
+$action = $_POST['admin_action'] ?? ($_GET['action'] ?? '');
+if ($action === 'logout') {
+    if ($sessionCookie) {
+        $authService->logout($sessionCookie);
+    }
+    setcookie($cookieName, '', time() - 3600, '/');
+    header('Location: /admin.php');
+    exit;
+}
+
+// 3. Handle Admin Login Form Action
+$loginError = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'admin_login') {
+    $email = trim((string)($_POST['email'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
+
+    try {
+        [$user, $rawToken] = $authService->login($email, $password);
+        if (($user['role'] ?? '') !== 'admin') {
+            throw new Exception('Akses ditolak: Akun Anda tidak memiliki hak akses administrator.');
+        }
+
+        $secureCookie = !$isLocal && (($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['SERVER_PORT'] ?? '') === '443');
+        setcookie(
+            $cookieName,
+            $rawToken,
+            time() + 604800,
+            '/',
+            '',
+            $secureCookie,
+            true
+        );
+
+        header('Location: /admin.php');
+        exit;
+    } catch (\Throwable $e) {
+        $loginError = $e->getMessage();
+    }
+}
+
+// 4. Gatekeeper: If not admin, render secure login page and EXIT immediately!
+if (!$isAdmin) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="id" class="h-full bg-slate-950">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Login Administrator — AI Ciptaone Router</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+    </head>
+    <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mx-auto text-white shadow-lg shadow-indigo-500/25">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h1 class="text-xl font-extrabold text-white tracking-tight">AI Ciptaone Control Center</h1>
+                <p class="text-xs text-slate-400">Silakan masuk menggunakan akun administrator terverifikasi.</p>
+            </div>
+
+            <?php if ($loginError): ?>
+                <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-semibold text-rose-300 flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span><?php echo htmlspecialchars($loginError); ?></span>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" class="space-y-4">
+                <input type="hidden" name="admin_action" value="admin_login">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email Administrator</label>
+                    <input type="email" name="email" required placeholder="admin@ciptaone.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Kata Sandi</label>
+                    <input type="password" name="password" required placeholder="••••••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-600">
+                </div>
+                <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+                    <span>Masuk ke Dashboard</span>
+                </button>
+            </form>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+// 5. CSRF Token Generation for Authenticated Admin
+$csrfSecret = (string)$config->get('SECRET_KEY', 'ciptaone_sec_key_default');
+$adminCsrfToken = hash_hmac('sha256', ($currentUser['id'] ?? 'local_admin') . $sessionCookie, $csrfSecret);
 
 $message = '';
 $messageType = 'success';
 
-// Handle Actions (POST)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isAdmin) {
-    $action = $_POST['admin_action'] ?? '';
+// 6. Handle Mutating Actions (POST with CSRF Verification)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action !== 'admin_login') {
+    $submittedCsrf = (string)($_POST['csrf_token'] ?? '');
     $adminId = $currentUser['id'] ?? 'admin_local';
 
     try {
+        if (!Security::secureCompare($adminCsrfToken, $submittedCsrf)) {
+            throw new Exception('Validasi keamanan (CSRF Token) gagal atau sesi Anda telah kedaluwarsa. Silakan refresh halaman.');
+        }
+
         if ($action === 'save_settings') {
             $nowIso = gmdate('Y-m-d H:i:s');
             $allowed = [
@@ -163,10 +270,6 @@ $activeTab = $_GET['tab'] ?? 'settings';
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         code, pre { font-family: 'JetBrains Mono', monospace; }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(12px);
-        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased">
@@ -182,7 +285,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
                 <div>
                     <div class="flex items-center space-x-2">
                         <span class="font-extrabold text-base tracking-tight text-white">AI Ciptaone</span>
-                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/20">Router Core</span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/20">Control Center</span>
                     </div>
                     <p class="text-[11px] text-slate-400">High-Performance Central AI Gateway & Billing</p>
                 </div>
@@ -192,7 +295,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
                 <?php if ($isLocal): ?>
                     <div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span>Mode Lokal (Admin)</span>
+                        <span>Mode Lokal</span>
                     </div>
                 <?php endif; ?>
                 
@@ -209,6 +312,15 @@ $activeTab = $_GET['tab'] ?? 'settings';
                     </svg>
                     <span>/v1/models</span>
                 </a>
+
+                <?php if ($currentUser): ?>
+                    <a href="?action=logout" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Keluar</span>
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
     </header>
@@ -294,6 +406,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
 
                 <form method="POST" class="space-y-6">
                     <input type="hidden" name="admin_action" value="save_settings">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
 
                     <!-- Provider 1: OpenRouter -->
                     <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
@@ -448,6 +561,8 @@ $activeTab = $_GET['tab'] ?? 'settings';
                     </h3>
                     <form method="POST" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                         <input type="hidden" name="admin_action" value="add_model">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
+
                         <div>
                             <label class="block font-bold text-slate-300 uppercase mb-1.5">Public Model ID</label>
                             <input type="text" name="public_id" required placeholder="Contoh: deepseek/deepseek-chat" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
@@ -512,6 +627,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
                                     <td class="px-6 py-4 text-right">
                                         <form method="POST" class="inline">
                                             <input type="hidden" name="admin_action" value="toggle_model">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
                                             <input type="hidden" name="model_id" value="<?php echo htmlspecialchars($m['id']); ?>">
                                             <input type="hidden" name="new_status" value="<?php echo $m['enabled'] ? '0' : '1'; ?>">
                                             <button type="submit" class="inline-flex items-center space-x-1 px-3 py-1 text-xs font-semibold rounded-lg transition <?php echo $m['enabled'] ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'; ?>">
@@ -583,6 +699,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
                                         <?php if ($t['status'] !== 'paid' && $t['status'] !== 'rejected'): ?>
                                             <form method="POST" class="inline">
                                                 <input type="hidden" name="admin_action" value="review_topup">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
                                                 <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($t['order_id']); ?>">
                                                 <input type="hidden" name="decision" value="paid">
                                                 <button type="submit" class="inline-flex items-center space-x-1 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 font-semibold rounded-lg transition">
@@ -594,6 +711,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
                                             </form>
                                             <form method="POST" class="inline">
                                                 <input type="hidden" name="admin_action" value="review_topup">
+                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
                                                 <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($t['order_id']); ?>">
                                                 <input type="hidden" name="decision" value="rejected">
                                                 <button type="submit" class="inline-flex items-center space-x-1 px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 font-semibold rounded-lg transition">

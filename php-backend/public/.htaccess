@@ -1,4 +1,4 @@
-﻿# ========================================================
+# ========================================================
 # AI Ciptaone Router - Apache / LiteSpeed .htaccess
 # Handles API routing, React SPA fallback, SSE streaming,
 # and HTTP security headers for cPanel shared hosting.
@@ -16,9 +16,10 @@
         RewriteRule .* - [E=nobuf:1]
     </IfModule>
 
-    # 2. Block direct access to hidden files and sensitive directories
+    # 2. Block direct access to hidden files, sensitive extensions and directories
     RewriteRule ^\.(?!well-known) - [F]
     RewriteRule ^(config|storage|src|tests|migrations)/ - [F]
+    RewriteRule \.(sqlite|sqlite3|db|env|sql|log|sh|bat)$ - [F]
 
     # 3. Route Backend API endpoints directly to PHP Front Controller
     RewriteRule ^(api/v1/.*|v1/.*|health/.*)$ index.php [QSA,L]
