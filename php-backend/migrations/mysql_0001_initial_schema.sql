@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `credit_ledger` (
     `reference_type` VARCHAR(64) NOT NULL,
     `reference_id` VARCHAR(128) NOT NULL,
     `idempotency_key` VARCHAR(191) NOT NULL,
-    `metadata_json TEXT NULL,
+    `metadata_json` TEXT NULL,
     `created_at` DATETIME NOT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_ledger_idempotency` (`idempotency_key`),
