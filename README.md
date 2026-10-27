@@ -1,4 +1,4 @@
-﻿# AI Ciptaone Router (MVP)
+# AI Ciptaone Router (MVP)
 
 > **Produk:** AI API Router Universal + Playground Chat Multi-Model  
 > **Infrastruktur Target:** Oracle Cloud Always Free (Backend Gateway) + Cloudflare Workers / Cloudflare D1 (Database) + Caddy (Reverse Proxy HTTPS)  
@@ -292,3 +292,4 @@ Buka browser di: `http://localhost:5173`
 | **Bot Telegram Review Admin** | ✅ Selesai | Allowlist `TELEGRAM_ADMIN_IDS`, notifikasi pesan, callback approve/reject |
 | **DANA Dynamic QRIS Adapter** | ⏳ Menunggu Akses Resmi | Adapter siap & diamankan (`DANA_ENABLED=false`). Menunggu persetujuan DANA Bisnis |
 | **Admin Dashboard Panel** | ✅ Selesai | Topup review, bukti viewer, model killswitch, balance adjustment, audit |
+| **Dokumentasi API Interaktif & OpenAPI Spec** | ✅ Selesai | Portal interaktif di `/docs`, generator kode multi-bahasa, dan `/openapi.json` |

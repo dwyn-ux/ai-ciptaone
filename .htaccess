@@ -26,7 +26,20 @@
     # 4. Route admin.php
     RewriteRule ^admin\.php$ php-backend/public/admin.php [QSA,L]
 
-    # 5. Route root
+    # 5. Route docs & openapi
+    RewriteRule ^(docs|documentation)$ php-backend/public/docs.php [QSA,L]
+    RewriteRule ^docs\.php$ php-backend/public/docs.php [QSA,L]
+    RewriteRule ^openapi\.json$ php-backend/public/openapi.json [QSA,L]
+
+    # 6. Route static frontend assets if requested directly
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 7. Route client-side SPA routes (dashboard, playground, api-keys, topup, history, login, register, landing)
+    RewriteRule ^(dashboard|playground|api-keys|topup|history|login|register|landing)$ php-backend/public/index.php [QSA,L]
+
+    # 8. Route root
     RewriteRule ^$ php-backend/public/index.php [QSA,L]
 </IfModule>
 

@@ -54,9 +54,60 @@ function createApplicationRouter(): \Ciptaone\Core\Router {
     $router->get('/health/live', [$healthCtrl, 'live']);
     $router->get('/health/ready', [$healthCtrl, 'ready']);
 
-    // Root & Admin Web UI Redirects
+    // Documentation & OpenAPI Spec Routes
+    $router->get('/docs', function (\Ciptaone\Core\Request $request) {
+        require __DIR__ . '/../public/docs.php';
+        exit;
+    });
+    $router->get('/documentation', function (\Ciptaone\Core\Request $request) {
+        header('Location: /docs');
+        exit;
+    });
+    $router->get('/openapi.json', function (\Ciptaone\Core\Request $request) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo file_get_contents(__DIR__ . '/../public/openapi.json');
+        exit;
+    });
+
+    // Root Landing Page & SPA Routes
     $router->get('/', function (\Ciptaone\Core\Request $request) {
-        header('Location: /admin.php');
+        $htmlFile = __DIR__ . '/../public/index.html';
+        if (file_exists($htmlFile)) {
+            header('Content-Type: text/html; charset=utf-8');
+            readfile($htmlFile);
+            exit;
+        }
+        header('Location: /docs');
+        exit;
+    });
+    $router->get('/landing', function (\Ciptaone\Core\Request $request) {
+        $htmlFile = __DIR__ . '/../public/index.html';
+        if (file_exists($htmlFile)) {
+            header('Content-Type: text/html; charset=utf-8');
+            readfile($htmlFile);
+            exit;
+        }
+        header('Location: /');
+        exit;
+    });
+    $router->get('/dashboard', function (\Ciptaone\Core\Request $request) {
+        $htmlFile = __DIR__ . '/../public/index.html';
+        if (file_exists($htmlFile)) {
+            header('Content-Type: text/html; charset=utf-8');
+            readfile($htmlFile);
+            exit;
+        }
+        header('Location: /');
+        exit;
+    });
+    $router->get('/playground', function (\Ciptaone\Core\Request $request) {
+        $htmlFile = __DIR__ . '/../public/index.html';
+        if (file_exists($htmlFile)) {
+            header('Content-Type: text/html; charset=utf-8');
+            readfile($htmlFile);
+            exit;
+        }
+        header('Location: /');
         exit;
     });
     $router->get('/admin', function (\Ciptaone\Core\Request $request) {

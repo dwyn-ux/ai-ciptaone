@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { ApiError } from "../api/client";
@@ -19,7 +19,7 @@ export const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
-      navigate("/");
+      navigate("/dashboard");
     } catch (err: any) {
       if (err instanceof ApiError) {
         setError(err.message);

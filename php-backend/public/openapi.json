@@ -1,0 +1,586 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AI Ciptaone Router API",
+    "version": "1.0.0",
+    "description": "API Router Universal multi-model kompatibel OpenAI dengan sistem billing reservasi kredit atomik, double-entry ledger, dan manajemen API key.",
+    "contact": {
+      "name": "Tim AI Ciptaone",
+      "url": "https://decomu.site"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://decomu.site",
+      "description": "Production Server (cPanel / Cloud)"
+    },
+    {
+      "url": "http://127.0.0.1:8000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Key (sk-live-...)",
+        "description": "Gunakan API key yang diawali dengan 'sk-live-'"
+      },
+      "CookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ciptaone_session",
+        "description": "Cookie sesi HttpOnly yang didapatkan setelah login"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error"
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "insufficient_balance"
+              },
+              "message": {
+                "type": "string",
+                "example": "Saldo kredit tidak mencukupi untuk request ini."
+              },
+              "details": {
+                "type": "object"
+              }
+            },
+            "required": ["code", "message"]
+          }
+        },
+        "required": ["status", "error"]
+      },
+      "Model": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "deepseek/deepseek-chat"
+          },
+          "object": {
+            "type": "string",
+            "example": "model"
+          },
+          "created": {
+            "type": "integer",
+            "example": 1714000000
+          },
+          "owned_by": {
+            "type": "string",
+            "example": "AI Ciptaone"
+          },
+          "context_length": {
+            "type": "integer",
+            "example": 65536
+          },
+          "pricing": {
+            "type": "object",
+            "properties": {
+              "prompt_credit_per_1k": {
+                "type": "number",
+                "example": 2.5
+              },
+              "completion_credit_per_1k": {
+                "type": "number",
+                "example": 10.0
+              }
+            }
+          }
+        }
+      },
+      "ChatCompletionRequest": {
+        "type": "object",
+        "required": ["model", "messages"],
+        "properties": {
+          "model": {
+            "type": "string",
+            "example": "deepseek/deepseek-chat"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["role", "content"],
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": ["system", "user", "assistant"],
+                  "example": "user"
+                },
+                "content": {
+                  "type": "string",
+                  "example": "Jelaskan cara kerja router AI dalam satu paragraf."
+                }
+              }
+            }
+          },
+          "stream": {
+            "type": "boolean",
+            "default": false,
+            "example": false
+          },
+          "temperature": {
+            "type": "number",
+            "default": 0.7,
+            "example": 0.7
+          },
+          "max_tokens": {
+            "type": "integer",
+            "default": 1024,
+            "example": 1024
+          }
+        }
+      },
+      "ChatCompletionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "chatcmpl-8k9w2j9a"
+          },
+          "object": {
+            "type": "string",
+            "example": "chat.completion"
+          },
+          "created": {
+            "type": "integer",
+            "example": 1714000000
+          },
+          "model": {
+            "type": "string",
+            "example": "deepseek/deepseek-chat"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": { "type": "integer", "example": 0 },
+                "message": {
+                  "type": "object",
+                  "properties": {
+                    "role": { "type": "string", "example": "assistant" },
+                    "content": { "type": "string", "example": "AI Router adalah jembatan pintar..." }
+                  }
+                },
+                "finish_reason": { "type": "string", "example": "stop" }
+              }
+            }
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "prompt_tokens": { "type": "integer", "example": 18 },
+              "completion_tokens": { "type": "integer", "example": 45 },
+              "total_tokens": { "type": "integer", "example": 63 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/models": {
+      "get": {
+        "summary": "Daftar Model AI yang Tersedia",
+        "description": "Mengembalikan daftar semua model AI yang aktif dan siap digunakan beserta tarif kredit per token.",
+        "security": [
+          { "BearerAuth": [] },
+          { "CookieAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar model berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": { "type": "string", "example": "list" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Model" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tidak terautentikasi",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "summary": "OpenAI-Compatible Chat Completions",
+        "description": "Mengirimkan pesan chat ke model AI yang dipilih. Mendukung streaming respon (Server-Sent Events) bila `stream: true`.",
+        "security": [
+          { "BearerAuth": [] },
+          { "CookieAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChatCompletionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Respon sukses (JSON untuk non-streaming, SSE untuk stream: true)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ChatCompletionResponse" }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "example": "data: {\"id\":\"...\",\"choices\":[{\"delta\":{\"content\":\"Halo\"}}]}\n\ndata: [DONE]\n\n"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Format request tidak valid",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "API Key tidak valid atau kedaluwarsa",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "402": {
+            "description": "Saldo kredit tidak cukup untuk reservasi token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit tercapai",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Registrasi Pengguna Baru",
+        "description": "Mendaftar akun baru dengan email dan password. Pengguna baru otomatis dibuatkan dompet kredit awal.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "developer@example.com" },
+                  "password": { "type": "string", "minLength": 8, "example": "Rahasia123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Akun berhasil didaftarkan"
+          },
+          "400": {
+            "description": "Email sudah digunakan atau validasi password gagal"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Masuk / Login Pengguna",
+        "description": "Verifikasi kredensial email dan password. Menetapkan cookie sesi 'ciptaone_session' (HttpOnly).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "developer@example.com" },
+                  "password": { "type": "string", "example": "Rahasia123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login berhasil, session cookie ditetapkan"
+          },
+          "401": {
+            "description": "Email atau password salah"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "Keluar / Logout",
+        "security": [{ "CookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Sesi berhasil dihapus" }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "summary": "Profil Pengguna",
+        "security": [
+          { "BearerAuth": [] },
+          { "CookieAuth": [] }
+        ],
+        "responses": {
+          "200": { "description": "Informasi profil dan id pengguna" }
+        }
+      }
+    },
+    "/api/v1/wallet": {
+      "get": {
+        "summary": "Cek Saldo Dompet Kredit",
+        "description": "Mengembalikan jumlah kredit aktif yang tersedia untuk memanggil model AI.",
+        "security": [
+          { "BearerAuth": [] },
+          { "CookieAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saldo berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "balance_credits": { "type": "integer", "example": 50000 },
+                    "currency": { "type": "string", "example": "IDR" },
+                    "updated_at": { "type": "string", "example": "2026-10-27T10:00:00Z" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transactions": {
+      "get": {
+        "summary": "Riwayat Mutasi Saldo (Ledger)",
+        "security": [
+          { "BearerAuth": [] },
+          { "CookieAuth": [] }
+        ],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Daftar entri ledger transaksi" }
+        }
+      }
+    },
+    "/api/v1/usage": {
+      "get": {
+        "summary": "Riwayat Pemakaian Token AI",
+        "security": [
+          { "BearerAuth": [] },
+          { "CookieAuth": [] }
+        ],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Daftar pemakaian token dan potongan kredit per panggilan model" }
+        }
+      }
+    },
+    "/api/v1/api-keys": {
+      "get": {
+        "summary": "Daftar API Key Pengguna",
+        "security": [{ "CookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Daftar API key (hanya menampilkan key_prefix untuk keamanan)"
+          }
+        }
+      },
+      "post": {
+        "summary": "Buat API Key Baru",
+        "description": "Membuat secret API key baru (`sk-live-...`). Secret plaintext hanya ditampilkan sekali saat respon ini dikembalikan!",
+        "security": [{ "CookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "example": "Aplikasi Web Produksi" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "API Key berhasil dibuat" }
+        }
+      }
+    },
+    "/api/v1/api-keys/{key_id}": {
+      "delete": {
+        "summary": "Cabut / Revoke API Key",
+        "security": [{ "CookieAuth": [] }],
+        "parameters": [
+          { "name": "key_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "API Key berhasil dicabut secara permanen" }
+        }
+      }
+    },
+    "/api/v1/topups": {
+      "get": {
+        "summary": "Daftar Invoice Top-up",
+        "security": [{ "CookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Riwayat top-up dan status pembayarannya" }
+        }
+      },
+      "post": {
+        "summary": "Buat Invoice Top-up",
+        "description": "Membuat pesanan isi ulang saldo kredit baru dengan batas waktu transfer.",
+        "security": [{ "CookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount_minor", "payment_method"],
+                "properties": {
+                  "amount_minor": { "type": "integer", "example": 50000, "description": "Nominal dalam Rupiah" },
+                  "payment_method": { "type": "string", "enum": ["manual_transfer", "tripay_qris"], "example": "manual_transfer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Invoice top-up berhasil diterbitkan" }
+        }
+      }
+    },
+    "/api/v1/topups/{identifier}/proof": {
+      "post": {
+        "summary": "Unggah Bukti Transfer Pembayaran",
+        "description": "Mengunggah foto bukti pembayaran bank transfer. Bukti disimpan secara privat dan otomatis diteruskan ke admin Telegram untuk diverifikasi.",
+        "security": [{ "CookieAuth": [] }],
+        "parameters": [
+          { "name": "identifier", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "File gambar JPG, PNG, atau WEBP (maks 5MB)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Bukti berhasil diunggah, invoice beralih ke status under_review" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check Liveness",
+        "description": "Pemeriksaan apakah server API sedang berjalan.",
+        "responses": {
+          "200": {
+            "description": "Server dalam kondisi sehat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "service": { "type": "string", "example": "ai-ciptaone-router" },
+                    "runtime": { "type": "string", "example": "php-8.4.0" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "summary": "Health Check Readiness",
+        "description": "Pemeriksaan kesiapan koneksi database relasional.",
+        "responses": {
+          "200": {
+            "description": "Koneksi database siap menerima transaksi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ready" },
+                    "database": { "type": "string", "example": "connected" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

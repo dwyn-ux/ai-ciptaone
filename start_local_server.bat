@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal enabledelayedexpansion
 title AI Ciptaone Router - Local PHP Server
 
@@ -26,6 +26,8 @@ if %ERRORLEVEL% NEQ 0 (
 echo [INFO] Menjalankan PHP Development Server pada http://127.0.0.1:8000 ...
 echo.
 echo Endpoint yang siap diakses:
+echo   - Dokumentasi API: http://127.0.0.1:8000/docs
+echo   - OpenAPI Spec   : http://127.0.0.1:8000/openapi.json
 echo   - Web Admin UI   : http://127.0.0.1:8000/admin
 echo   - Web Test Suite : http://127.0.0.1:8000/test_runner.php
 echo   - Health Check   : http://127.0.0.1:8000/health
