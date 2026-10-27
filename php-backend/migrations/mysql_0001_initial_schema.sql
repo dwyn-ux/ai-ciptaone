@@ -1,5 +1,5 @@
--- ========================================================
--- DECOMU AI ROUTER - MySQL / MariaDB Database Schema
+﻿-- ========================================================
+-- AI Ciptaone Router - MySQL / MariaDB Database Schema
 -- Migration: 0001_initial_schema.sql
 -- Compatible with MySQL 8.0+ and MariaDB 10.4+
 -- Engine: InnoDB, Charset: utf8mb4

@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# Push Decomu AI Router to GitHub
+﻿#!/usr/bin/env bash
+# Push AI Ciptaone Router to GitHub
 
 echo "========================================================"
 echo "  PUSH CODEBASE KE GITHUB: https://github.com/dwyn-ux/ai-ciptaone.git"

@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Controllers;
+namespace Ciptaone\Controllers;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\Request;
-use Decomu\Core\Security;
-use Decomu\Services\ApiKeyService;
-use Decomu\Services\AuthService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\Request;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\ApiKeyService;
+use Ciptaone\Services\AuthService;
 
 /**
  * Base controller providing authentication helpers, admin checks,
@@ -36,7 +36,7 @@ abstract class BaseController
      */
     protected function getAuthUser(Request $request): array
     {
-        $token = $request->getCookie((string)$this->config->get('SESSION_COOKIE_NAME', 'decomu_session'));
+        $token = $request->getCookie((string)$this->config->get('SESSION_COOKIE_NAME', 'ciptaone_session'));
         if (!$token) {
             $bearer = $request->getBearerToken();
             if ($bearer && !str_starts_with($bearer, 'sk-live-')) {
@@ -93,7 +93,7 @@ abstract class BaseController
         }
 
         // Fallback to session cookie
-        $cookieName = (string)$this->config->get('SESSION_COOKIE_NAME', 'decomu_session');
+        $cookieName = (string)$this->config->get('SESSION_COOKIE_NAME', 'ciptaone_session');
         $sessionToken = $request->getCookie($cookieName);
         if (!$sessionToken && $bearer && !str_starts_with($bearer, 'sk-live-')) {
             $sessionToken = $bearer;

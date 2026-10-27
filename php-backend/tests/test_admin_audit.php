@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Tests;
+namespace Ciptaone\Tests;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Database;
-use Decomu\Services\AuditService;
-use Decomu\Services\AuthService;
-use Decomu\Services\WalletService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Database;
+use Ciptaone\Services\AuditService;
+use Ciptaone\Services\AuthService;
+use Ciptaone\Services\WalletService;
 
 function test_admin_audit_suite(Database $db): void
 {
@@ -16,8 +16,8 @@ function test_admin_audit_suite(Database $db): void
     $auditService = new AuditService($db);
 
     // Create regular user and admin user
-    $user = $authService->register('regular_' . bin2hex(random_bytes(4)) . '@decomu.site', 'RegularPass123#');
-    $admin = $authService->register('admin_' . bin2hex(random_bytes(4)) . '@decomu.site', 'AdminPass123#');
+    $user = $authService->register('regular_' . bin2hex(random_bytes(4)) . '@ciptaone.com', 'RegularPass123#');
+    $admin = $authService->register('admin_' . bin2hex(random_bytes(4)) . '@ciptaone.com', 'AdminPass123#');
 
     // Elevate admin
     $db->execute("UPDATE users SET role = 'admin' WHERE id = ?", [$admin['id']]);
@@ -33,10 +33,11 @@ function test_admin_audit_suite(Database $db): void
 
     // Verify audit log
     $auditLogs = $auditService->listAuditLogs(10);
-    assert(count($auditLogs) >= 1, 'Audit log was not written');
-    assert($auditLogs[0]['action'] === 'balance_adjustment', 'Audit action mismatch');
-    assert($auditLogs[0]['target_id'] === $user['id'], 'Audit target mismatch');
-    assert($auditLogs[0]['metadata']['reason'] === 'Kompensasi gangguan teknis provider', 'Audit metadata reason mismatch');
+    $userLogs = array_values(array_filter($auditLogs, fn($l) => $l['target_id'] === $user['id']));
+    assert(count($userLogs) >= 1, 'Audit log was not written');
+    assert($userLogs[0]['action'] === 'balance_adjustment', 'Audit action mismatch');
+    assert($userLogs[0]['target_id'] === $user['id'], 'Audit target mismatch');
+    assert($userLogs[0]['metadata']['reason'] === 'Kompensasi gangguan teknis provider', 'Audit metadata reason mismatch');
 
     // 2. Admin deducts partial credits
     $newBal2 = $walletService->adjustBalanceAdmin(

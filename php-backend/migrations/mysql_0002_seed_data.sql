@@ -1,5 +1,5 @@
--- ========================================================
--- DECOMU AI ROUTER - MySQL / MariaDB Initial Seed Data
+﻿-- ========================================================
+-- AI Ciptaone Router - MySQL / MariaDB Initial Seed Data
 -- Migration: 0002_seed_data.sql
 -- Providers and Initial Models Setup
 -- ========================================================

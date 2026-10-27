@@ -1,11 +1,11 @@
-import os
+﻿import os
 import shutil
 import tempfile
 import pytest
 from app.config import settings
 from app.core.database import db
 
-TEST_DB_PATH = os.path.join(tempfile.gettempdir(), "test_decomu_d1.sqlite3")
+TEST_DB_PATH = os.path.join(tempfile.gettempdir(), "test_AI Ciptaone_d1.sqlite3")
 
 
 @pytest.fixture(scope="session", autouse=True)

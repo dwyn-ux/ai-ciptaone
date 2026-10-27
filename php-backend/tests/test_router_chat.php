@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Tests;
+namespace Ciptaone\Tests;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Database;
-use Decomu\Services\AuthService;
-use Decomu\Services\RouterService;
-use Decomu\Services\WalletService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Database;
+use Ciptaone\Services\AuthService;
+use Ciptaone\Services\RouterService;
+use Ciptaone\Services\WalletService;
 
 function test_router_chat_suite(Database $db): void
 {
@@ -38,7 +38,7 @@ function test_router_chat_suite(Database $db): void
     assert($openAiModels['data'][0]['id'] === 'mock/echo-v1', 'mock/echo-v1 model not found in catalog');
 
     // 3. Chat completion setup
-    $user = $authService->register('chat_tester_' . bin2hex(random_bytes(4)) . '@decomu.site', 'ChatPass12345#');
+    $user = $authService->register('chat_tester_' . bin2hex(random_bytes(4)) . '@ciptaone.com', 'ChatPass12345#');
     $userId = $user['id'];
 
     // Credit user wallet with 10,000 credits

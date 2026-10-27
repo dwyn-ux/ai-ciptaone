@@ -1,5 +1,5 @@
-/**
- * API Client for Decomu AI Router
+﻿/**
+ * API Client for AI Ciptaone Router
  */
 
 export interface ApiErrorEnvelope {

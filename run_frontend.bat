@@ -1,9 +1,9 @@
-@echo off
-title Decomu AI Router - Frontend (React + Vite)
+﻿@echo off
+title AI Ciptaone Router - Frontend (React + Vite)
 cd /d "%~dp0frontend"
 
 echo ========================================================
-echo   Starting Decomu AI Router Frontend (Vite)
+echo   Starting AI Ciptaone Router Frontend (Vite)
 echo ========================================================
 echo.
 

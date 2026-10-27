@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Controllers;
+namespace Ciptaone\Controllers;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Database;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\Request;
-use Decomu\Core\Response;
-use Decomu\Core\Security;
-use Decomu\Services\AuditService;
-use Decomu\Services\TopupService;
-use Decomu\Services\WalletService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\Request;
+use Ciptaone\Core\Response;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\AuditService;
+use Ciptaone\Services\TopupService;
+use Ciptaone\Services\WalletService;
 
 /**
  * Controller for admin dashboard operations: model & provider kill switches,

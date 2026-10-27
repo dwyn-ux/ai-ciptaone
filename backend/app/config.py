@@ -1,4 +1,4 @@
-import os
+﻿import os
 from typing import List
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,10 +16,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(default="insecure-default-change-in-production-0123456789abcdef")
 
     # Session & Security
-    SESSION_COOKIE_NAME: str = Field(default="decomu_session")
+    SESSION_COOKIE_NAME: str = Field(default="ciptaone_session")
     SESSION_LIFETIME_SECONDS: int = Field(default=7 * 24 * 3600)  # 7 days
     SESSION_SECURE_COOKIE: bool = Field(default=False)  # Set True in production (HTTPS)
-    CORS_ORIGINS: str = Field(default="http://localhost:5173,http://localhost:3000,https://decomu.site")
+    CORS_ORIGINS: str = Field(default="http://localhost:5173,http://localhost:3000,https://ciptaone.com")
 
     # Database: 'worker' (Cloudflare D1 via Worker API) or 'sqlite' (local / testing)
     DB_MODE: str = Field(default="sqlite")
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     CREDIT_PER_RUPIAH: int = Field(default=1)       # 1 IDR = 1 Credit
     MANUAL_BANK_NAME: str = Field(default="BCA / Mandiri / BRI")
     MANUAL_ACCOUNT_NO: str = Field(default="1234567890")
-    MANUAL_ACCOUNT_HOLDER: str = Field(default="Decomu AI Router")
+    MANUAL_ACCOUNT_HOLDER: str = Field(default="AI Ciptaone Router")
     MANUAL_QRIS_IMAGE_URL: str = Field(default="")
 
     # Telegram Bot

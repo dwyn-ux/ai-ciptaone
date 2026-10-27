@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -30,7 +30,7 @@ export const Navbar: React.FC = () => {
               <Cpu className="w-5 h-5" />
             </div>
             <span className="font-bold text-lg tracking-tight text-slate-900">
-              Decomu <span className="text-indigo-600 font-semibold text-xs px-2 py-0.5 bg-indigo-50 rounded-full border border-indigo-200">AI Router</span>
+              AI Ciptaone <span className="text-indigo-600 font-semibold text-xs px-2 py-0.5 bg-indigo-50 rounded-full border border-indigo-200">AI Router</span>
             </span>
           </Link>
 

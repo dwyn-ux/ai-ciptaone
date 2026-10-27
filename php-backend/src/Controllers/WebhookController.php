@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Controllers;
+namespace Ciptaone\Controllers;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Database;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\Request;
-use Decomu\Core\Response;
-use Decomu\Core\Security;
-use Decomu\Services\PaymentAdapters\DanaPaymentAdapter;
-use Decomu\Services\TelegramBotService;
-use Decomu\Services\TopupService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\Request;
+use Ciptaone\Core\Response;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
+use Ciptaone\Services\TelegramBotService;
+use Ciptaone\Services\TopupService;
 
 /**
  * Controller for handling external webhooks: Telegram bot callbacks & payment gateways.

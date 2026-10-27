@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Navbar } from "./Navbar";
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -10,7 +10,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </main>
       <footer className="border-t border-slate-200 bg-white py-6 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
-          <span>&copy; {new Date().getFullYear()} Decomu AI Router. Hak cipta dilindungi.</span>
+          <span>&copy; {new Date().getFullYear()} AI Ciptaone Router. Hak cipta dilindungi.</span>
           <div className="flex space-x-4">
             <span className="text-slate-400">Arsitektur: Oracle Cloud Always Free + Cloudflare D1</span>
             <span>•</span>

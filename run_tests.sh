@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
-# Decomu AI Router - Test Suite Runner for Bash / Linux / Mac / Git Bash
+﻿#!/usr/bin/env bash
+# AI Ciptaone Router - Test Suite Runner for Bash / Linux / Mac / Git Bash
 
 echo "========================================================"
-echo "  DECOMU AI ROUTER - TEST RUNNER LOKAL"
+echo "  AI Ciptaone Router - TEST RUNNER LOKAL"
 echo "========================================================"
 
 if ! command -v php &> /dev/null; then

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services\PaymentAdapters;
+namespace Ciptaone\Services\PaymentAdapters;
 
 /**
  * Interface contract for payment gateway adapters.

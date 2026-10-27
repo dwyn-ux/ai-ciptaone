@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Core;
+namespace Ciptaone\Core;
 
 /**
  * Standard error codes conforming to PRD Section 7.

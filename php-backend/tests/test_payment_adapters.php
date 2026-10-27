@@ -1,19 +1,19 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Tests;
+namespace Ciptaone\Tests;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Services\PaymentAdapters\DanaPaymentAdapter;
-use Decomu\Services\PaymentAdapters\ManualPaymentAdapter;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
+use Ciptaone\Services\PaymentAdapters\ManualPaymentAdapter;
 
 function test_payment_adapters_suite(): void
 {
     $config = Config::getInstance();
     $config->set('MANUAL_BANK_NAME', 'Bank Mandiri');
     $config->set('MANUAL_ACCOUNT_NO', '9876543210');
-    $config->set('MANUAL_ACCOUNT_HOLDER', 'PT Decomu');
+    $config->set('MANUAL_ACCOUNT_HOLDER', 'PT AI Ciptaone');
     $config->set('MANUAL_QRIS_IMAGE_URL', 'https://example.com/qris.jpg');
 
     // 1. Manual Bank Transfer

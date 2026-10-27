@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services;
+namespace Ciptaone\Services;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Database;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\Security;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\Security;
 
 /**
  * Manages API keys lifecycle: creation, hash storage, listing, revocation, and validation.

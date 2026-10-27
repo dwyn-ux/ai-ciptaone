@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Core;
+namespace Ciptaone\Core;
 
 /**
  * Handles HTTP responses: JSON envelopes, SSE streaming for AI chat,

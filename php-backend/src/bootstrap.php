@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Decomu AI Router - Bootstrap and PSR-4 Autoloader
+ * AI Ciptaone Router - Bootstrap and PSR-4 Autoloader
  * Zero external dependencies: works out-of-the-box on any PHP 8.x cPanel hosting.
  */
 
@@ -11,9 +11,9 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
-// 2. Register PSR-4 Autoloader for Decomu namespace
+// 2. Register PSR-4 Autoloader for AI Ciptaone namespace
 spl_autoload_register(function (string $class) {
-    $prefix = 'Decomu\\';
+    $prefix = 'Ciptaone\\';
     $baseDir = __DIR__ . '/';
 
     $len = strlen($prefix);
@@ -30,24 +30,24 @@ spl_autoload_register(function (string $class) {
 });
 
 // 3. Initialize Config
-$config = \Decomu\Core\Config::getInstance();
+$config = \Ciptaone\Core\Config::getInstance();
 if ((bool)$config->get('DEBUG', false)) {
     ini_set('display_errors', '1');
 }
 
 // 4. Return configured router with all endpoints registered
-function createApplicationRouter(): \Decomu\Core\Router {
-    $router = new \Decomu\Core\Router();
+function createApplicationRouter(): \Ciptaone\Core\Router {
+    $router = new \Ciptaone\Core\Router();
 
     // Instantiate Controllers
-    $authCtrl    = new \Decomu\Controllers\AuthController();
-    $meCtrl      = new \Decomu\Controllers\MeController();
-    $apiKeyCtrl  = new \Decomu\Controllers\ApiKeyController();
-    $openAiCtrl  = new \Decomu\Controllers\OpenAIController();
-    $topupCtrl   = new \Decomu\Controllers\TopupController();
-    $webhookCtrl = new \Decomu\Controllers\WebhookController();
-    $adminCtrl   = new \Decomu\Controllers\AdminController();
-    $healthCtrl  = new \Decomu\Controllers\HealthController();
+    $authCtrl    = new \Ciptaone\Controllers\AuthController();
+    $meCtrl      = new \Ciptaone\Controllers\MeController();
+    $apiKeyCtrl  = new \Ciptaone\Controllers\ApiKeyController();
+    $openAiCtrl  = new \Ciptaone\Controllers\OpenAIController();
+    $topupCtrl   = new \Ciptaone\Controllers\TopupController();
+    $webhookCtrl = new \Ciptaone\Controllers\WebhookController();
+    $adminCtrl   = new \Ciptaone\Controllers\AdminController();
+    $healthCtrl  = new \Ciptaone\Controllers\HealthController();
 
     // Health Routes
     $router->get('/health', [$healthCtrl, 'live']);
@@ -55,11 +55,11 @@ function createApplicationRouter(): \Decomu\Core\Router {
     $router->get('/health/ready', [$healthCtrl, 'ready']);
 
     // Root & Admin Web UI Redirects
-    $router->get('/', function (\Decomu\Core\Request $request) {
+    $router->get('/', function (\Ciptaone\Core\Request $request) {
         header('Location: /admin.php');
         exit;
     });
-    $router->get('/admin', function (\Decomu\Core\Request $request) {
+    $router->get('/admin', function (\Ciptaone\Core\Request $request) {
         header('Location: /admin.php');
         exit;
     });

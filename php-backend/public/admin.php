@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * ========================================================
- * DECOMU AI ROUTER - Standalone Web Admin Control Center
+ * AI Ciptaone Router - Standalone Web Admin Control Center
  * Works out-of-the-box on shared hosting and local development
  * without requiring Node.js or Vite.
  * ========================================================
@@ -11,13 +11,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../src/bootstrap.php';
 
-use Decomu\Core\Config;
-use Decomu\Core\Database;
-use Decomu\Core\Security;
-use Decomu\Services\AuditService;
-use Decomu\Services\AuthService;
-use Decomu\Services\TopupService;
-use Decomu\Services\WalletService;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\AuditService;
+use Ciptaone\Services\AuthService;
+use Ciptaone\Services\TopupService;
+use Ciptaone\Services\WalletService;
 
 $config = Config::getInstance();
 $db = Database::getInstance($config);
@@ -31,7 +31,7 @@ $isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', '::ffff:
     || str_starts_with($_SERVER['HTTP_HOST'] ?? '', '127.0.0.1');
 
 // Auth check
-$sessionCookie = $_COOKIE[$config->get('SESSION_COOKIE_NAME', 'decomu_session')] ?? '';
+$sessionCookie = $_COOKIE[$config->get('SESSION_COOKIE_NAME', 'ciptaone_session')] ?? '';
 $currentUser = $sessionCookie ? $authService->getUserFromSession($sessionCookie) : null;
 $isAdmin = ($currentUser && ($currentUser['role'] ?? '') === 'admin') || $isLocal;
 
@@ -126,7 +126,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Decomu AI Router — Web Admin Control Center</title>
+    <title>AI Ciptaone Router — Web Admin Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -141,7 +141,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
                     ⚙️
                 </div>
                 <div>
-                    <h1 class="font-bold text-base text-slate-900 tracking-tight">Decomu AI Router <span class="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200 font-semibold">Web Admin</span></h1>
+                    <h1 class="font-bold text-base text-slate-900 tracking-tight">AI Ciptaone Router <span class="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200 font-semibold">Web Admin</span></h1>
                 </div>
             </div>
             <div class="flex items-center space-x-4 text-xs">

@@ -1,4 +1,4 @@
-# Daftar Kontrak Endpoint API yang Dipertahankan
+﻿# Daftar Kontrak Endpoint API yang Dipertahankan
 
 Seluruh endpoint pada backend baru (PHP 8.x) mempertahankan kontrak input, output JSON envelope, status code HTTP, format cookie, dan kompatibilitas OpenAI yang sebelumnya berjalan pada backend Python FastAPI.
 
@@ -9,7 +9,7 @@ Seluruh endpoint pada backend baru (PHP 8.x) mempertahankan kontrak input, outpu
 | Metode | Endpoint | Autentikasi | Deskripsi & Payload | Respons |
 | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/api/v1/auth/register` | Publik | `{ "email": "...", "password": "..." }` | `201 Created`: `{ "user": { "id": "usr_...", "email": "...", "role": "user", ... } }` |
-| `POST` | `/api/v1/auth/login` | Publik | `{ "email": "...", "password": "..." }` | `200 OK`: Menetapkan cookie `decomu_session` (`HttpOnly`, `SameSite=Lax`) |
+| `POST` | `/api/v1/auth/login` | Publik | `{ "email": "...", "password": "..." }` | `200 OK`: Menetapkan cookie `ciptaone_session` (`HttpOnly`, `SameSite=Lax`) |
 | `POST` | `/api/v1/auth/logout` | Session | Kosong | `200 OK`: Menghapus sesi di DB & kedaluwarsa cookie |
 | `POST` | `/api/v1/auth/verify-email` | Publik | `{ "token": "..." }` | `200 OK` |
 | `POST` | `/api/v1/auth/forgot-password`| Publik | `{ "email": "..." }` | `200 OK` (Pesan aman tanpa enumeration) |
@@ -52,7 +52,7 @@ Respons:
       "id": "mock/echo-v1",
       "object": "model",
       "created": 1714000000,
-      "owned_by": "decomu"
+      "owned_by": "AI Ciptaone"
     }
   ]
 }
@@ -157,5 +157,5 @@ Khusus pengguna dengan `role = 'admin'`:
 
 | Metode | Endpoint | Deskripsi | Respons Sukses |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/health/live` | Liveness probe proses PHP | `{"status": "ok", "service": "decomu-ai-router", "runtime": "php-8.x.x"}` |
+| `GET` | `/health/live` | Liveness probe proses PHP | `{"status": "ok", "service": "ai-ciptaone-router", "runtime": "php-8.x.x"}` |
 | `GET` | `/health/ready` | Readiness probe konektivitas database MySQL | `{"status": "ready", "database": "connected"}` |

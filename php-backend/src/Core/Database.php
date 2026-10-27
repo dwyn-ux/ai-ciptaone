@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Core;
+namespace Ciptaone\Core;
 
 use PDO;
 use PDOException;
@@ -99,7 +99,7 @@ class Database
             } else {
                 $host = (string)$this->config->get('DB_HOST', '127.0.0.1');
                 $port = (int)$this->config->get('DB_PORT', 3306);
-                $dbname = (string)$this->config->get('DB_NAME', 'decomu_router');
+                $dbname = (string)$this->config->get('DB_NAME', 'ciptaone_router');
                 $charset = (string)$this->config->get('DB_CHARSET', 'utf8mb4');
                 $user = (string)$this->config->get('DB_USER', 'root');
                 $pass = (string)$this->config->get('DB_PASS', '');

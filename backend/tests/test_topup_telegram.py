@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from app.config import settings
 from app.core.errors import AppError
 from app.services.auth_service import auth_service
@@ -10,7 +10,7 @@ from app.services.wallet_service import wallet_service
 @pytest.mark.asyncio
 async def test_topup_lifecycle_and_telegram():
     # Setup test user and configure admin ID
-    user = await auth_service.register(email="topup_tester@decomu.site", password="TopupPassword123!")
+    user = await auth_service.register(email="topup_tester@ciptaone.com", password="TopupPassword123!")
     settings.TELEGRAM_ADMIN_IDS = "999888111,12345678"
 
     # 1. Create Top-up Invoice

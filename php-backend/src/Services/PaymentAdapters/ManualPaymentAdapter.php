@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services\PaymentAdapters;
+namespace Ciptaone\Services\PaymentAdapters;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Core\ErrorCode;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\ErrorCode;
 
 /**
  * Adapter for Manual Bank Transfer & Official Static QRIS top-up.
@@ -47,7 +47,7 @@ class ManualPaymentAdapter extends BasePaymentAdapter
                 'title' => 'Transfer Bank Manual',
                 'bank_name' => (string)$this->config->get('MANUAL_BANK_NAME', 'BCA / Mandiri / BRI'),
                 'account_number' => (string)$this->config->get('MANUAL_ACCOUNT_NO', '1234567890'),
-                'account_holder' => (string)$this->config->get('MANUAL_ACCOUNT_HOLDER', 'Decomu AI Router'),
+                'account_holder' => (string)$this->config->get('MANUAL_ACCOUNT_HOLDER', 'AI Ciptaone Router'),
                 'order_id' => $orderId,
                 'amount' => $amountMinor,
                 'currency' => $currency,

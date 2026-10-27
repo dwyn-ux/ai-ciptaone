@@ -1,5 +1,5 @@
-@echo off
-title Decomu AI Router - Deploy Cloudflare D1 & Worker
+﻿@echo off
+title AI Ciptaone Router - Deploy Cloudflare D1 & Worker
 cd /d "%~dp0worker"
 
 echo ========================================================
@@ -25,8 +25,8 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [*] Langkah 3: Membuat database D1 (nama: decomu-d1)...
-call npx wrangler d1 create decomu-d1
+echo [*] Langkah 3: Membuat database D1 (nama: AI Ciptaone-d1)...
+call npx wrangler d1 create AI Ciptaone-d1
 
 echo.
 echo ==============================================================================
@@ -39,8 +39,8 @@ pause
 
 echo.
 echo [*] Langkah 4: Menjalankan migrasi SQL ke database D1...
-call npx wrangler d1 execute decomu-d1 --file=../migrations/0001_initial_schema.sql
-call npx wrangler d1 execute decomu-d1 --file=../migrations/0002_seed_data.sql
+call npx wrangler d1 execute AI Ciptaone-d1 --file=../migrations/0001_initial_schema.sql
+call npx wrangler d1 execute AI Ciptaone-d1 --file=../migrations/0002_seed_data.sql
 
 echo.
 echo [*] Langkah 5: Mengatur secret token (D1_SERVICE_TOKEN)...
@@ -55,10 +55,10 @@ call npx wrangler deploy
 echo.
 echo ==============================================================================
 echo [SELESAI] Cloudflare D1 dan Worker Gateway Anda berhasil di-deploy!
-echo Catat URL Worker yang muncul di atas (misal: https://decomu-d1-worker.xxx.workers.dev)
+echo Catat URL Worker yang muncul di atas (misal: https://AI Ciptaone-d1-worker.xxx.workers.dev)
 echo Masukkan URL tersebut dan D1_SERVICE_TOKEN ke file .env pada server Oracle:
 echo   DB_MODE=worker
-echo   D1_WORKER_URL=https://decomu-d1-worker.xxx.workers.dev
+echo   D1_WORKER_URL=https://AI Ciptaone-d1-worker.xxx.workers.dev
 echo   D1_SERVICE_TOKEN=token_rahasia_anda
 echo ==============================================================================
 echo.

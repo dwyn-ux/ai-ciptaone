@@ -1,28 +1,28 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Tests;
+namespace Ciptaone\Tests;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Core\Database;
-use Decomu\Services\AuthService;
-use Decomu\Services\TelegramBotService;
-use Decomu\Services\TopupService;
-use Decomu\Services\WalletService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\Database;
+use Ciptaone\Services\AuthService;
+use Ciptaone\Services\TelegramBotService;
+use Ciptaone\Services\TopupService;
+use Ciptaone\Services\WalletService;
 
 function test_topup_telegram_suite(Database $db): void
 {
     $config = Config::getInstance();
     $config->set('TELEGRAM_ADMIN_IDS', '12345678,98765432');
-    $config->set('PROOF_UPLOAD_DIR', sys_get_temp_dir() . '/decomu_test_proofs_' . time());
+    $config->set('PROOF_UPLOAD_DIR', sys_get_temp_dir() . '/ciptaone_test_proofs_' . time());
 
     $authService = new AuthService($db, $config);
     $walletService = new WalletService($db);
     $topupService = new TopupService($db, $config, $walletService);
     $telegramBot = new TelegramBotService($config);
 
-    $user = $authService->register('topup_tester_' . bin2hex(random_bytes(4)) . '@decomu.site', 'TopupPass12345#');
+    $user = $authService->register('topup_tester_' . bin2hex(random_bytes(4)) . '@ciptaone.com', 'TopupPass12345#');
     $userId = $user['id'];
 
     // 1. Minimum amount validation

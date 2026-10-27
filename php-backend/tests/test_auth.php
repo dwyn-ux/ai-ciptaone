@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Tests;
+namespace Ciptaone\Tests;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Database;
-use Decomu\Core\Security;
-use Decomu\Services\AuthService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\AuthService;
 
 function test_auth_suite(Database $db): void
 {
@@ -24,7 +24,7 @@ function test_auth_suite(Database $db): void
     assert($norm === 'user.name@example.com', "Email normalization failed: expected 'user.name@example.com', got '{$norm}'");
 
     // 3. User Registration
-    $regEmail = 'tester_' . bin2hex(random_bytes(4)) . '@decomu.site';
+    $regEmail = 'tester_' . bin2hex(random_bytes(4)) . '@ciptaone.com';
     $user = $authService->register($regEmail, 'StrongPass12345#');
     assert(!empty($user['id']), 'User ID is empty');
     assert($user['email'] === $regEmail, 'Normalized email mismatch');

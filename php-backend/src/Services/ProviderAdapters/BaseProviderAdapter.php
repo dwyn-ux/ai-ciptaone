@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services\ProviderAdapters;
+namespace Ciptaone\Services\ProviderAdapters;
 
 /**
  * Interface contract for upstream AI provider integrations.

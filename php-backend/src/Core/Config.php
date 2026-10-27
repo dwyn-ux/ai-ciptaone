@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Core;
+namespace Ciptaone\Core;
 
 /**
  * Environment configuration manager with zero-dependency .env loader.
@@ -37,16 +37,16 @@ class Config
             'APP_ENV' => 'development',
             'DEBUG' => false,
             'SECRET_KEY' => 'insecure-default-change-in-production-0123456789abcdef',
-            'SESSION_COOKIE_NAME' => 'decomu_session',
+            'SESSION_COOKIE_NAME' => 'ciptaone_session',
             'SESSION_LIFETIME_SECONDS' => 604800, // 7 days
             'SESSION_SECURE_COOKIE' => false,
-            'CORS_ORIGINS' => 'http://localhost:5173,http://localhost:3000,https://decomu.site',
+            'CORS_ORIGINS' => 'http://localhost:5173,http://localhost:3000,https://ciptaone.com',
             
             // Database
             'DB_DRIVER' => 'mysql', // 'mysql' or 'sqlite'
             'DB_HOST' => '127.0.0.1',
             'DB_PORT' => 3306,
-            'DB_NAME' => 'decomu_router',
+            'DB_NAME' => 'ciptaone_router',
             'DB_USER' => 'root',
             'DB_PASS' => '',
             'DB_CHARSET' => 'utf8mb4',
@@ -61,7 +61,7 @@ class Config
             'CREDIT_PER_RUPIAH' => 1,
             'MANUAL_BANK_NAME' => 'BCA / Mandiri / BRI',
             'MANUAL_ACCOUNT_NO' => '1234567890',
-            'MANUAL_ACCOUNT_HOLDER' => 'Decomu AI Router',
+            'MANUAL_ACCOUNT_HOLDER' => 'AI Ciptaone Router',
             'MANUAL_QRIS_IMAGE_URL' => '',
 
             // Telegram

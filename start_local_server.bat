@@ -1,9 +1,9 @@
-@echo off
+﻿@echo off
 setlocal enabledelayedexpansion
-title Decomu AI Router - Local PHP Server
+title AI Ciptaone Router - Local PHP Server
 
 echo ========================================================
-echo   DECOMU AI ROUTER - SERVER LOKAL PHP
+echo   AI Ciptaone Router - SERVER LOKAL PHP
 echo ========================================================
 echo.
 

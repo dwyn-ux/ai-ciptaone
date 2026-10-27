@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services\ProviderAdapters;
+namespace Ciptaone\Services\ProviderAdapters;
 
-use Decomu\Core\AppError;
-use Decomu\Core\ErrorCode;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\ErrorCode;
 
 /**
  * Adapter for upstream OpenAI-compatible endpoints (OpenRouter, OpenAI, Groq, etc.)

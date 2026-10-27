@@ -1,19 +1,19 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Tests;
+namespace Ciptaone\Tests;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Database;
-use Decomu\Services\AuthService;
-use Decomu\Services\WalletService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Database;
+use Ciptaone\Services\AuthService;
+use Ciptaone\Services\WalletService;
 
 function test_wallet_ledger_suite(Database $db): void
 {
     $authService = new AuthService($db);
     $walletService = new WalletService($db);
 
-    $user = $authService->register('wallet_tester_' . bin2hex(random_bytes(4)) . '@decomu.site', 'WalletPass12345#');
+    $user = $authService->register('wallet_tester_' . bin2hex(random_bytes(4)) . '@ciptaone.com', 'WalletPass12345#');
     $userId = $user['id'];
 
     // 1. Initial wallet

@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services;
+namespace Ciptaone\Services;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Core\Database;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\Security;
-use Decomu\Services\PaymentAdapters\BasePaymentAdapter;
-use Decomu\Services\PaymentAdapters\DanaPaymentAdapter;
-use Decomu\Services\PaymentAdapters\ManualPaymentAdapter;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\PaymentAdapters\BasePaymentAdapter;
+use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
+use Ciptaone\Services\PaymentAdapters\ManualPaymentAdapter;
 
 /**
  * Top-up invoice management, safe private payment proof uploads,

@@ -1,16 +1,16 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Controllers;
+namespace Ciptaone\Controllers;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\RateLimiter;
-use Decomu\Core\Request;
-use Decomu\Core\Response;
-use Decomu\Core\Security;
-use Decomu\Services\AuthService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\RateLimiter;
+use Ciptaone\Core\Request;
+use Ciptaone\Core\Response;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\AuthService;
 
 /**
  * Controller for user registration, login, logout, and credential recovery.
@@ -68,7 +68,7 @@ class AuthController extends BaseController
         [$user, $rawToken] = $this->authService->login($email, $password);
 
         // Set secure HttpOnly session cookie
-        $cookieName = (string)$this->config->get('SESSION_COOKIE_NAME', 'decomu_session');
+        $cookieName = (string)$this->config->get('SESSION_COOKIE_NAME', 'ciptaone_session');
         $lifetime = (int)$this->config->get('SESSION_LIFETIME_SECONDS', 604800);
         $secure = (bool)$this->config->get('SESSION_SECURE_COOKIE', false);
 
@@ -82,7 +82,7 @@ class AuthController extends BaseController
 
     public function logout(Request $request): void
     {
-        $cookieName = (string)$this->config->get('SESSION_COOKIE_NAME', 'decomu_session');
+        $cookieName = (string)$this->config->get('SESSION_COOKIE_NAME', 'ciptaone_session');
         $token = $request->getCookie($cookieName);
         if (!$token) {
             $bearer = $request->getBearerToken();

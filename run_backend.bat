@@ -1,9 +1,9 @@
-@echo off
-title Decomu AI Router - Backend (FastAPI)
+﻿@echo off
+title AI Ciptaone Router - Backend (FastAPI)
 cd /d "%~dp0backend"
 
 echo ========================================================
-echo   Starting Decomu AI Router Backend (FastAPI)
+echo   Starting AI Ciptaone Router Backend (FastAPI)
 echo ========================================================
 echo.
 

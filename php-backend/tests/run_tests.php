@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * ========================================================
- * DECOMU AI ROUTER - Standalone PHP Test Suite Runner
+ * AI Ciptaone Router - Standalone PHP Test Suite Runner
  * Executes all unit and integration test modules.
  * Compatible with PHP 8.1+ and zero external dependencies.
  * ========================================================
@@ -20,16 +20,16 @@ require_once __DIR__ . '/test_payment_adapters.php';
 require_once __DIR__ . '/test_admin_audit.php';
 require_once __DIR__ . '/test_security_csrf.php';
 
-use Decomu\Core\Config;
-use Decomu\Core\Database;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\Database;
 
 function run_all_tests(): array {
-    $tempDb = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'decomu_test_' . time() . '_' . bin2hex(random_bytes(4)) . '.sqlite3';
+    $tempDb = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ciptaone_test_' . time() . '_' . bin2hex(random_bytes(4)) . '.sqlite3';
 
     $config = Config::getInstance();
     $config->set('DB_DRIVER', 'sqlite');
     $config->set('SQLITE_PATH', $tempDb);
-    $config->set('PROOF_UPLOAD_DIR', sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'decomu_proofs_test');
+    $config->set('PROOF_UPLOAD_DIR', sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ciptaone_proofs_test');
 
     Database::reset();
     $db = Database::getInstance($config);
@@ -61,28 +61,28 @@ function run_all_tests(): array {
 
     $suites = [
         'Auth: Password Hashing, Normalization & Lifecycle' => function () use ($db) {
-            \Decomu\Tests\test_auth_suite($db);
+            \Ciptaone\Tests\test_auth_suite($db);
         },
         'API Keys: Generation, Hashing, Reveal & Revocation' => function () use ($db) {
-            \Decomu\Tests\test_api_keys_suite($db);
+            \Ciptaone\Tests\test_api_keys_suite($db);
         },
         'Wallet & Ledger: Atomic Reservation, Settle & Idempotency' => function () use ($db) {
-            \Decomu\Tests\test_wallet_ledger_suite($db);
+            \Ciptaone\Tests\test_wallet_ledger_suite($db);
         },
         'Router: Token Math, Models Catalog & Chat Completions' => function () use ($db) {
-            \Decomu\Tests\test_router_chat_suite($db);
+            \Ciptaone\Tests\test_router_chat_suite($db);
         },
         'Top-up: Invoices, Private Proofs & Telegram Allowlist Review' => function () use ($db) {
-            \Decomu\Tests\test_topup_telegram_suite($db);
+            \Ciptaone\Tests\test_topup_telegram_suite($db);
         },
         'Payment Adapters: Manual Transfer & DANA Deactivation Protection' => function () {
-            \Decomu\Tests\test_payment_adapters_suite();
+            \Ciptaone\Tests\test_payment_adapters_suite();
         },
         'Admin: Model Controls, Balance Adjustments & Audit Logs' => function () use ($db) {
-            \Decomu\Tests\test_admin_audit_suite($db);
+            \Ciptaone\Tests\test_admin_audit_suite($db);
         },
         'Security: CSRF Origin Protection & Database Rate Limiting' => function () use ($db) {
-            \Decomu\Tests\test_security_csrf_suite($db);
+            \Ciptaone\Tests\test_security_csrf_suite($db);
         },
     ];
 
@@ -90,7 +90,7 @@ function run_all_tests(): array {
     $totalStartTime = microtime(true);
 
     echo "============================================================\n";
-    echo "🚀 RUNNING DECOMU AI ROUTER PHP TEST SUITE (PHP " . PHP_VERSION . ")\n";
+    echo "🚀 RUNNING AI Ciptaone Router PHP TEST SUITE (PHP " . PHP_VERSION . ")\n";
     echo "============================================================\n";
 
     foreach ($suites as $name => $fn) {

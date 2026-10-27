@@ -1,7 +1,7 @@
-# Caddyfile for Decomu AI Router on Oracle Always Free VM
-# Replace 'decomu.site' with your registered domain or Oracle Public IP
+﻿# Caddyfile for AI Ciptaone Router on Oracle Always Free VM
+# Replace 'ciptaone.com' with your registered domain or Oracle Public IP
 
-decomu.site {
+ciptaone.com {
     encode gzip zstd
 
     # Security Headers

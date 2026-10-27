@@ -1,5 +1,5 @@
-# ========================================================
-# DECOMU AI ROUTER - Apache / LiteSpeed .htaccess
+﻿# ========================================================
+# AI Ciptaone Router - Apache / LiteSpeed .htaccess
 # Handles API routing, React SPA fallback, SSE streaming,
 # and HTTP security headers for cPanel shared hosting.
 # ========================================================

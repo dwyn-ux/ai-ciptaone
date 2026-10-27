@@ -1,7 +1,7 @@
-@echo off
-title Decomu AI Router - Frontend Development Server
+﻿@echo off
+title AI Ciptaone Router - Frontend Development Server
 echo ========================================================
-echo   DECOMU AI ROUTER - FRONTEND REACT / VITE
+echo   AI Ciptaone Router - FRONTEND REACT / VITE
 echo ========================================================
 echo.
 

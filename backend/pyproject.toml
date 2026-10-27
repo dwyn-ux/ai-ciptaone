@@ -1,5 +1,5 @@
-[project]
-name = "decomu-ai-router"
+﻿[project]
+name = "ai-ciptaone-router"
 version = "0.1.0"
 description = "AI API Router + Playground Chat Backend"
 readme = "../README.md"

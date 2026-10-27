@@ -1,5 +1,5 @@
-{
-  "name": "decomu-d1-worker",
+﻿{
+  "name": "AI Ciptaone-d1-worker",
   "version": "1.0.0",
   "description": "Cloudflare Worker gateway for D1 database access",
   "main": "src/index.ts",

@@ -1,4 +1,4 @@
-import json
+﻿import json
 import pytest
 from app.core.errors import AppError
 from app.models.schemas import ChatCompletionMessage, ChatCompletionRequest
@@ -28,14 +28,14 @@ async def test_router_models_and_chat():
     assert "mock/echo-v1" in model_ids
 
     # 2. Setup user and give credits
-    user = await auth_service.register(email="chat_tester@decomu.site", password="ChatPassword2026!")
+    user = await auth_service.register(email="chat_tester@ciptaone.com", password="ChatPassword2026!")
     await wallet_service.credit_wallet_for_topup(user.id, "INV-CHAT-01", 10000)
 
     # 3. Non-streaming chat completion with mock provider
     req = ChatCompletionRequest(
         model="mock/echo-v1",
         messages=[
-            ChatCompletionMessage(role="user", content="Halo Decomu AI!")
+            ChatCompletionMessage(role="user", content="Halo AI Ciptaone AI!")
         ],
         stream=False,
         max_tokens=256

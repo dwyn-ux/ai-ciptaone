@@ -1,4 +1,4 @@
-# DECOMU AI ROUTER (MVP)
+﻿# AI Ciptaone Router (MVP)
 
 > **Produk:** AI API Router Universal + Playground Chat Multi-Model  
 > **Infrastruktur Target:** Oracle Cloud Always Free (Backend Gateway) + Cloudflare Workers / Cloudflare D1 (Database) + Caddy (Reverse Proxy HTTPS)  
@@ -48,7 +48,7 @@ Browser / Client App
 ## 2. Struktur Repositori
 
 ```text
-decomu.site/
+ciptaone.com/
 ├── PRD.md                       # Spesifikasi persyaratan produk
 ├── README.md                    # Dokumentasi lengkap & panduan deployment
 ├── CPANEL_DEPLOYMENT_GUIDE.md   # Panduan deployment lengkap shared hosting cPanel
@@ -233,13 +233,13 @@ Buka browser di: `http://localhost:5173`
    ```
 2. Buat database D1:
    ```bash
-   npx wrangler d1 create decomu-d1
+   npx wrangler d1 create AI Ciptaone-d1
    ```
    Salin `database_id` ke dalam `worker/wrangler.toml`.
 3. Jalankan migrasi schema dan seed awal:
    ```bash
-   npx wrangler d1 execute decomu-d1 --file=../migrations/0001_initial_schema.sql
-   npx wrangler d1 execute decomu-d1 --file=../migrations/0002_seed_data.sql
+   npx wrangler d1 execute AI Ciptaone-d1 --file=../migrations/0001_initial_schema.sql
+   npx wrangler d1 execute AI Ciptaone-d1 --file=../migrations/0002_seed_data.sql
    ```
 4. Pasang secret token pada Cloudflare Worker:
    ```bash
@@ -248,10 +248,10 @@ Buka browser di: `http://localhost:5173`
    # Masukkan secret token acak (misal: hex 32 karakter)
    npx wrangler deploy
    ```
-5. Simpan URL Worker (misal `https://decomu-d1-worker.yourname.workers.dev`) dan secret token ke `.env` server Oracle:
+5. Simpan URL Worker (misal `https://AI Ciptaone-d1-worker.yourname.workers.dev`) dan secret token ke `.env` server Oracle:
    ```env
    DB_MODE=worker
-   D1_WORKER_URL=https://decomu-d1-worker.yourname.workers.dev
+   D1_WORKER_URL=https://AI Ciptaone-d1-worker.yourname.workers.dev
    D1_SERVICE_TOKEN=token-yang-sama
    ```
 

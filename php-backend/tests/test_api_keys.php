@@ -1,20 +1,20 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Tests;
+namespace Ciptaone\Tests;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Database;
-use Decomu\Core\Security;
-use Decomu\Services\ApiKeyService;
-use Decomu\Services\AuthService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\ApiKeyService;
+use Ciptaone\Services\AuthService;
 
 function test_api_keys_suite(Database $db): void
 {
     $authService = new AuthService($db);
     $apiKeyService = new ApiKeyService($db);
 
-    $user = $authService->register('apikey_tester_' . bin2hex(random_bytes(4)) . '@decomu.site', 'KeyPass12345#');
+    $user = $authService->register('apikey_tester_' . bin2hex(random_bytes(4)) . '@ciptaone.com', 'KeyPass12345#');
     $userId = $user['id'];
 
     // 1. Create API key

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * ========================================================
- * DECOMU AI ROUTER - Web Git Push Helper
+ * AI Ciptaone Router - Web Git Push Helper
  * Accessible locally at: http://127.0.0.1:8000/git_push.php
  * ========================================================
  */
@@ -75,7 +75,7 @@ if ($action === 'push') {
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Git Push to GitHub — Decomu AI Router</title>
+    <title>Git Push to GitHub — AI Ciptaone Router</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-8 font-mono text-sm">

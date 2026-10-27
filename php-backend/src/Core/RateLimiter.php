@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Core;
+namespace Ciptaone\Core;
 
 /**
  * High-performance database-backed sliding window rate limiter.

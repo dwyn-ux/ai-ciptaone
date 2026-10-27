@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+﻿from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from app.core.database import db
 
@@ -8,7 +8,7 @@ router = APIRouter(prefix="/health", tags=["Health Checks"])
 @router.get("/live")
 async def liveness_check():
     """Liveness probe: verifies process is alive and accepting connections."""
-    return {"status": "ok", "service": "decomu-ai-router"}
+    return {"status": "ok", "service": "ai-ciptaone-router"}
 
 
 @router.get("/ready")

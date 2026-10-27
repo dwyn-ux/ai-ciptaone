@@ -1,4 +1,4 @@
-# Panduan Konfigurasi Bot Telegram & Webhook Review Admin
+﻿# Panduan Konfigurasi Bot Telegram & Webhook Review Admin
 
 Dokumen ini menjelaskan cara menghubungkan bot Telegram privat dengan AI Router untuk menerima notifikasi top-up dan melakukan persetujuan (approval) mutasi secara aman.
 
@@ -11,7 +11,7 @@ Dokumen ini menjelaskan cara menghubungkan bot Telegram privat dengan AI Router 
    ```text
    /newbot
    ```
-3. Beri nama tampilan bot (contoh: `Decomu Admin Bot`) dan username bot yang diakhiri `bot` (contoh: `decomu_router_admin_bot`).
+3. Beri nama tampilan bot (contoh: `AI Ciptaone Admin Bot`) dan username bot yang diakhiri `bot` (contoh: `ciptaone_router_admin_bot`).
 4. **@BotFather** akan memberikan **HTTP API Token** berupa format:
    ```text
    7123456789:AAFlkjhsdf8923-lsdkjf2389sdf

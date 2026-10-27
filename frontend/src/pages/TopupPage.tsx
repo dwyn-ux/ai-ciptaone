@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiFetch, uploadFile, ApiError } from "../api/client";
 import {
@@ -83,7 +83,7 @@ export const TopupPage: React.FC = () => {
           instructions: {
             bank_name: "BCA / Bank Transfer",
             account_number: "1234567890",
-            account_holder: "Decomu AI Router",
+            account_holder: "AI Ciptaone Router",
             instruction: `Transfer tepat Rp${fullDetails.amount_minor.toLocaleString("id-ID")} dengan berita ${fullDetails.order_id}.`,
           },
         });
@@ -263,7 +263,7 @@ export const TopupPage: React.FC = () => {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500">Atas Nama:</span>
                     <span className="font-semibold text-slate-900">
-                      {activeInvoice.instructions.account_holder || "Decomu AI Router"}
+                      {activeInvoice.instructions.account_holder || "AI Ciptaone Router"}
                     </span>
                   </div>
 

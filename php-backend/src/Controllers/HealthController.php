@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Controllers;
+namespace Ciptaone\Controllers;
 
-use Decomu\Core\Database;
-use Decomu\Core\Request;
-use Decomu\Core\Response;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\Request;
+use Ciptaone\Core\Response;
 
 /**
  * Liveness and readiness health check controller.
@@ -24,7 +24,7 @@ class HealthController extends BaseController
     {
         Response::json([
             'status' => 'ok',
-            'service' => 'decomu-ai-router',
+            'service' => 'ai-ciptaone-router',
             'runtime' => 'php-' . PHP_VERSION,
         ]);
     }

@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from app.core.errors import AppError
 from app.services.payment_adapters.dana import DanaPaymentAdapter
 from app.services.payment_adapters.manual import ManualPaymentAdapter
@@ -12,7 +12,7 @@ async def test_manual_payment_adapter():
         amount_minor=100000,
         currency="IDR",
         user_id="usr_test",
-        user_email="test@decomu.site",
+        user_email="test@ciptaone.com",
     )
     assert res["checkout_url"] is None
     assert "instructions" in res
@@ -30,7 +30,7 @@ async def test_dana_adapter_unconfigured_protection():
             amount_minor=50000,
             currency="IDR",
             user_id="usr_test",
-            user_email="test@decomu.site",
+            user_email="test@ciptaone.com",
         )
     assert exc_info.value.code == "invalid_request"
     assert "DANA QRIS Dinamis belum aktif" in exc_info.value.message

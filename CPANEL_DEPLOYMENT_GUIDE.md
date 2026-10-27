@@ -1,4 +1,4 @@
-# Panduan Deployment AI Router ke Shared Hosting cPanel (PHP 8.x + MySQL)
+﻿# Panduan Deployment AI Router ke Shared Hosting cPanel (PHP 8.x + MySQL)
 
 Dokumen ini memandu proses migrasi dan instalasi backend **AI Router (PHP)** beserta antarmuka **Frontend React/Vite** ke lingkungan shared hosting cPanel tanpa memerlukan Python App, Docker, VPS, atau proses daemon server.
 
@@ -30,7 +30,7 @@ Menempatkan logika bisnis, secret, dan bukti pembayaran di luar `public_html` ag
 
 ```text
 /home/cpaneluser/
-├── decomu-backend/               # DI LUAR public_html (Aman dari akses publik)
+├── AI Ciptaone-backend/               # DI LUAR public_html (Aman dari akses publik)
 │   ├── .env                      # Kredensial & secret database
 │   ├── migrations/               # Skema SQL
 │   ├── src/                      # Kode sumber PHP (Core, Services, Controllers)
@@ -38,14 +38,14 @@ Menempatkan logika bisnis, secret, dan bukti pembayaran di luar `public_html` ag
 │       └── proofs/               # Bukti transfer (Dilindungi)
 └── public_html/                  # DOCUMENT ROOT PUBLIK
     ├── .htaccess                 # Routing API & React SPA fallback
-    ├── index.php                 # Front controller (memanggil ../decomu-backend/src/bootstrap.php)
+    ├── index.php                 # Front controller (memanggil ../AI Ciptaone-backend/src/bootstrap.php)
     ├── index.html                # Build frontend React
     └── assets/                   # File bundle frontend (JS/CSS)
 ```
 
 > Jika memilih Opsi A, sesuaikan path pada `public_html/index.php`:
 > ```php
-> require_once __DIR__ . '/../decomu-backend/src/bootstrap.php';
+> require_once __DIR__ . '/../AI Ciptaone-backend/src/bootstrap.php';
 > ```
 
 ---
@@ -85,11 +85,11 @@ Jika penyedia hosting Anda membatasi akses di luar `public_html`:
 
 ### Langkah 2: Pembuatan Database MySQL
 1. Di cPanel, buka **MySQL® Databases** (atau **MySQL Database Wizard**).
-2. Buat database baru, misalnya: `cpaneluser_decomu`.
+2. Buat database baru, misalnya: `cpaneluser_AI Ciptaone`.
 3. Buat pengguna database baru, misalnya: `cpaneluser_dbuser` dengan password acak yang kuat.
 4. Hubungkan pengguna ke database dengan memberikan hak akses penuh (**ALL PRIVILEGES**).
 5. Buka **phpMyAdmin** dari cPanel.
-6. Pilih database `cpaneluser_decomu`.
+6. Pilih database `cpaneluser_AI Ciptaone`.
 7. Masuk ke tab **Import**:
    - Pilih file `php-backend/migrations/mysql_0001_initial_schema.sql` lalu klik **Go**.
    - Pilih file `php-backend/migrations/mysql_0002_seed_data.sql` lalu klik **Go**.
@@ -108,7 +108,7 @@ Jika penyedia hosting Anda membatasi akses di luar `public_html`:
    DB_DRIVER=mysql
    DB_HOST=localhost
    DB_PORT=3306
-   DB_NAME=cpaneluser_decomu
+   DB_NAME=cpaneluser_AI Ciptaone
    DB_USER=cpaneluser_dbuser
    DB_PASS=password_database_anda
    DB_CHARSET=utf8mb4
@@ -204,7 +204,7 @@ Options -Indexes
    `https://domainanda.com/health/live`  
    Respons yang diharapkan:
    ```json
-   { "status": "ok", "service": "decomu-ai-router", "runtime": "php-8.x.x" }
+   { "status": "ok", "service": "ai-ciptaone-router", "runtime": "php-8.x.x" }
    ```
 2. Buka endpoint readiness:  
    `https://domainanda.com/health/ready`  

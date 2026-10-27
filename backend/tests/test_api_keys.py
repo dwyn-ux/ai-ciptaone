@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from app.core.errors import AppError
 from app.services.api_key_service import api_key_service
 from app.services.auth_service import auth_service
@@ -7,7 +7,7 @@ from app.services.auth_service import auth_service
 @pytest.mark.asyncio
 async def test_api_key_lifecycle():
     # Setup test user
-    email = "apikey_tester@decomu.site"
+    email = "apikey_tester@ciptaone.com"
     pwd = "ApiKeyPassword2026!"
     user = await auth_service.register(email=email, password=pwd)
 

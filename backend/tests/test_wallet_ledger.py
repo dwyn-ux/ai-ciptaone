@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from app.core.errors import AppError
 from app.services.auth_service import auth_service
 from app.services.wallet_service import wallet_service
@@ -7,7 +7,7 @@ from app.services.wallet_service import wallet_service
 @pytest.mark.asyncio
 async def test_wallet_and_ledger_operations():
     # 1. Setup user with 0 initial balance
-    user = await auth_service.register(email="wallet_test@decomu.site", password="Password123!")
+    user = await auth_service.register(email="wallet_test@ciptaone.com", password="Password123!")
     wallet = await wallet_service.get_wallet(user.id)
     assert wallet.balance_credits == 0
 
@@ -88,7 +88,7 @@ async def test_concurrent_reservation_safety():
     """
     import asyncio
 
-    user = await auth_service.register(email="race_condition_test@decomu.site", password="RacePassword123!")
+    user = await auth_service.register(email="race_condition_test@ciptaone.com", password="RacePassword123!")
     await wallet_service.credit_wallet_for_topup(user.id, "INV-RACE-01", 1000)
 
     # Both try to reserve 800 credits concurrently

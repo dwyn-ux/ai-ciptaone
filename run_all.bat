@@ -1,18 +1,18 @@
-@echo off
-title Decomu AI Router - Launcher
+﻿@echo off
+title AI Ciptaone Router - Launcher
 cd /d "%~dp0"
 
 echo ========================================================
-echo   Menjalankan Decomu AI Router (Backend + Frontend)
+echo   Menjalankan AI Ciptaone Router (Backend + Frontend)
 echo ========================================================
 echo.
 echo [*] Membuka jendela Backend di port 8000...
-start "Decomu Backend (FastAPI)" cmd /k "run_backend.bat"
+start "AI Ciptaone Backend (FastAPI)" cmd /k "run_backend.bat"
 
 timeout /t 3 /nobreak >nul
 
 echo [*] Membuka jendela Frontend di port 5173...
-start "Decomu Frontend (Vite)" cmd /k "run_frontend.bat"
+start "AI Ciptaone Frontend (Vite)" cmd /k "run_frontend.bat"
 
 echo.
 echo ========================================================

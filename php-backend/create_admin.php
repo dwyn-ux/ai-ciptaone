@@ -3,20 +3,20 @@ declare(strict_types=1);
 
 /**
  * ========================================================
- * DECOMU AI ROUTER - Admin User Creation & Promotion Tool
+ * AI Ciptaone Router - Admin User Creation & Promotion Tool
  * Usage: php create_admin.php [email] [password]
- * Example: php create_admin.php admin@decomu.site AdminPass12345#
+ * Example: php create_admin.php admin@ciptaone.com AdminPass12345#
  * ========================================================
  */
 
 require_once __DIR__ . '/src/bootstrap.php';
 
-use Decomu\Core\Config;
-use Decomu\Core\Database;
-use Decomu\Core\Security;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\Security;
 
 echo "========================================================\n";
-echo "👑  DECOMU AI ROUTER - CREATE / PROMOTE ADMIN USER\n";
+echo "👑  AI Ciptaone Router - CREATE / PROMOTE ADMIN USER\n";
 echo "========================================================\n\n";
 
 $email = $argv[1] ?? null;

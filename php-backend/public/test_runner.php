@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * ========================================================
- * DECOMU AI ROUTER - Browser Test Suite Entry Point
+ * AI Ciptaone Router - Browser Test Suite Entry Point
  * Accessible locally at: http://localhost:8000/test_runner.php
  * or in production via ?secret=YOUR_SECRET_KEY
  * ========================================================

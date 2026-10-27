@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import os
 import sys
 
@@ -14,7 +14,7 @@ from app.services.wallet_service import wallet_service
 
 
 async def main():
-    email = "admin@decomu.site"
+    email = "admin@ciptaone.com"
     password = "AdminPassword2026!"
 
     print(f"[*] Inisialisasi skema database jika belum ada...")

@@ -1,10 +1,10 @@
-name = "decomu-d1-worker"
+﻿name = "AI Ciptaone-d1-worker"
 main = "src/index.ts"
 compatibility_date = "2024-04-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "decomu-d1"
+database_name = "AI Ciptaone-d1"
 database_id = "your-d1-database-uuid"
 migrations_dir = "../migrations"
 

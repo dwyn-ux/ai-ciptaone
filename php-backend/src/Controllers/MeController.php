@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Controllers;
+namespace Ciptaone\Controllers;
 
-use Decomu\Core\Request;
-use Decomu\Core\Response;
-use Decomu\Services\RouterService;
-use Decomu\Services\WalletService;
+use Ciptaone\Core\Request;
+use Ciptaone\Core\Response;
+use Ciptaone\Services\RouterService;
+use Ciptaone\Services\WalletService;
 
 /**
  * Controller for user profile, balance, ledger transactions, and usage history.

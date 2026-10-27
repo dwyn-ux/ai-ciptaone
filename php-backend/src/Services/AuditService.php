@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services;
+namespace Ciptaone\Services;
 
-use Decomu\Core\Database;
-use Decomu\Core\Security;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\Security;
 
 /**
  * Service to record and query admin audit logs.

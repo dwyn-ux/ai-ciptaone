@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Controllers;
+namespace Ciptaone\Controllers;
 
-use Decomu\Core\AppError;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\Request;
-use Decomu\Core\Response;
-use Decomu\Core\Security;
-use Decomu\Services\ApiKeyService;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\Request;
+use Ciptaone\Core\Response;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\ApiKeyService;
 
 /**
  * Controller for user API Key management.

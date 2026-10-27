@@ -1,5 +1,5 @@
-"""
-Standalone Test Runner for Decomu AI Router Test Suite
+﻿"""
+Standalone Test Runner for AI Ciptaone Router Test Suite
 Executes all unit and integration test modules asynchronously.
 """
 
@@ -39,11 +39,11 @@ from tests.test_admin_audit import test_admin_audit_and_balance_adjustment
 
 async def main():
     print("=" * 60)
-    print("🚀 RUNNING DECOMU AI ROUTER TEST SUITE")
+    print("🚀 RUNNING AI Ciptaone Router TEST SUITE")
     print("=" * 60)
 
     # 1. Initialize isolated test database
-    test_db = os.path.join(tempfile.gettempdir(), f"decomu_test_{int(time.time())}.sqlite3")
+    test_db = os.path.join(tempfile.gettempdir(), f"ciptaone_test_{int(time.time())}.sqlite3")
     settings.DB_MODE = "sqlite"
     settings.SQLITE_PATH = test_db
     db.mode = "sqlite"

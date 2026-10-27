@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from app.core.database import db
 from app.services.audit_service import audit_service
 from app.services.auth_service import auth_service
@@ -8,10 +8,10 @@ from app.services.wallet_service import wallet_service
 @pytest.mark.asyncio
 async def test_admin_audit_and_balance_adjustment():
     # 1. Setup admin and regular user
-    admin_user = await auth_service.register(email="admin_auditor@decomu.site", password="AdminPassword123!")
+    admin_user = await auth_service.register(email="admin_auditor@ciptaone.com", password="AdminPassword123!")
     await db.execute("UPDATE users SET role = 'admin' WHERE id = ?", [admin_user.id])
 
-    target_user = await auth_service.register(email="victim_user@decomu.site", password="UserPassword123!")
+    target_user = await auth_service.register(email="victim_user@ciptaone.com", password="UserPassword123!")
 
     # 2. Admin adds 25,000 credits to user
     new_bal = await wallet_service.adjust_balance_admin(

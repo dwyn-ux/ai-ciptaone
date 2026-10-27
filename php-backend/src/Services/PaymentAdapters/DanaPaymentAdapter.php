@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services\PaymentAdapters;
+namespace Ciptaone\Services\PaymentAdapters;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\Security;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\Security;
 
 /**
  * Adapter for Official DANA Dynamic QRIS / Merchant API.

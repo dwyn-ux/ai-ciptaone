@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * ========================================================
- * DECOMU AI ROUTER - Web Test Runner
+ * AI Ciptaone Router - Web Test Runner
  * Allows executing the test suite directly from a web browser
  * on shared hosting where SSH terminal is restricted.
  * Protected by secret key parameter.
@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/run_tests.php';
 
-use Decomu\Core\Config;
+use Ciptaone\Core\Config;
 
 $config = Config::getInstance();
 $configuredSecret = (string)$config->get('SECRET_KEY', '');
@@ -39,7 +39,7 @@ header('Content-Type: text/html; charset=utf-8');
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Decomu AI Router — Web Test Suite Runner</title>
+    <title>AI Ciptaone Router — Web Test Suite Runner</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: #0f172a; color: #f8fafc; padding: 2rem; margin: 0; }
         .container { max-width: 800px; margin: 0 auto; background: #1e293b; border-radius: 12px; border: 1px solid #334155; padding: 1.5rem; }
@@ -52,7 +52,7 @@ header('Content-Type: text/html; charset=utf-8');
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Decomu AI Router Test Suite</h1>
+        <h1>🚀 AI Ciptaone Router Test Suite</h1>
         <div style="margin-bottom: 1rem;">
             <?php if ($summary['failed'] === 0): ?>
                 <span class="badge badge-success">✅ ALL <?php echo $summary['passed']; ?> TESTS PASSED (<?php echo $summary['total_time']; ?>s)</span>

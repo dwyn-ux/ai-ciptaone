@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, EmailStr, Field
 
@@ -137,7 +137,7 @@ class OpenAIModelItem(BaseModel):
     id: str
     object: str = "model"
     created: int = 1714000000
-    owned_by: str = "decomu"
+    owned_by: str = "AI Ciptaone"
 
 
 class OpenAIModelListResponse(BaseModel):

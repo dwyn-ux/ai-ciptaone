@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from app.core.errors import AppError
 from app.core.security import hash_password, verify_password, normalize_email
 from app.services.auth_service import auth_service
@@ -20,7 +20,7 @@ async def test_email_normalization():
 
 @pytest.mark.asyncio
 async def test_user_registration_and_login():
-    email = "testuser@decomu.site"
+    email = "testuser@ciptaone.com"
     password = "SecurePassword2026!"
 
     # 1. Register

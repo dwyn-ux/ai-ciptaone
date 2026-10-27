@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services;
+namespace Ciptaone\Services;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
 
 /**
  * Telegram Bot integration: sends invoice notifications to admin Telegram IDs

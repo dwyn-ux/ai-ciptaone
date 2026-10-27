@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * ========================================================
- * DECOMU AI ROUTER - Database Migration & Seed CLI Tool
+ * AI Ciptaone Router - Database Migration & Seed CLI Tool
  * Usage: php migrate.php
  * Supports both MySQL / MariaDB and SQLite automatically.
  * ========================================================
@@ -11,11 +11,11 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/src/bootstrap.php';
 
-use Decomu\Core\Config;
-use Decomu\Core\Database;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\Database;
 
 echo "========================================================\n";
-echo "🛠️  DECOMU AI ROUTER - DATABASE MIGRATION TOOL\n";
+echo "🛠️  AI Ciptaone Router - DATABASE MIGRATION TOOL\n";
 echo "========================================================\n";
 
 $config = Config::getInstance();

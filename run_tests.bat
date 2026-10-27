@@ -1,9 +1,9 @@
-@echo off
+﻿@echo off
 setlocal enabledelayedexpansion
-title Decomu AI Router - Test Suite Runner
+title AI Ciptaone Router - Test Suite Runner
 
 echo ========================================================
-echo   DECOMU AI ROUTER - TEST RUNNER LOKAL
+echo   AI Ciptaone Router - TEST RUNNER LOKAL
 echo ========================================================
 echo.
 

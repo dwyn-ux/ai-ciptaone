@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { ApiError } from "../api/client";
@@ -50,7 +50,7 @@ export const RegisterPage: React.FC = () => {
           <div className="w-12 h-12 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white shadow-sm mb-4">
             <Cpu className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Buat Akun Decomu</h2>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Buat Akun AI Ciptaone</h2>
           <p className="mt-2 text-sm text-slate-600">
             Mulai coba berbagai model AI dalam satu antarmuka
           </p>

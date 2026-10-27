@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Services;
+namespace Ciptaone\Services;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Core\Database;
-use Decomu\Core\ErrorCode;
-use Decomu\Core\Response;
-use Decomu\Core\Security;
-use Decomu\Services\ProviderAdapters\BaseProviderAdapter;
-use Decomu\Services\ProviderAdapters\MockProviderAdapter;
-use Decomu\Services\ProviderAdapters\OpenAICompatibleAdapter;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\ErrorCode;
+use Ciptaone\Core\Response;
+use Ciptaone\Core\Security;
+use Ciptaone\Services\ProviderAdapters\BaseProviderAdapter;
+use Ciptaone\Services\ProviderAdapters\MockProviderAdapter;
+use Ciptaone\Services\ProviderAdapters\OpenAICompatibleAdapter;
 
 /**
  * AI Routing service: token mathematics, model selection, upstream orchestration,
@@ -130,7 +130,7 @@ class RouterService
                 'id' => $m['public_id'],
                 'object' => 'model',
                 'created' => 1714000000,
-                'owned_by' => 'decomu',
+                'owned_by' => 'AI Ciptaone',
             ];
         }
 

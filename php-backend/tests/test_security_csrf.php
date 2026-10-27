@@ -1,25 +1,25 @@
 <?php
 declare(strict_types=1);
 
-namespace Decomu\Tests;
+namespace Ciptaone\Tests;
 
-use Decomu\Core\AppError;
-use Decomu\Core\Config;
-use Decomu\Core\Database;
-use Decomu\Core\RateLimiter;
-use Decomu\Core\Request;
-use Decomu\Core\Security;
+use Ciptaone\Core\AppError;
+use Ciptaone\Core\Config;
+use Ciptaone\Core\Database;
+use Ciptaone\Core\RateLimiter;
+use Ciptaone\Core\Request;
+use Ciptaone\Core\Security;
 
 function test_security_csrf_suite(Database $db): void
 {
     $config = Config::getInstance();
-    $config->set('CORS_ORIGINS', 'https://decomu.site,http://localhost:5173');
+    $config->set('CORS_ORIGINS', 'https://ciptaone.com,http://localhost:5173');
 
     // 1. Mutating POST without Origin or with valid Origin passes
     $validReq = new Request(
         method: 'POST',
         uri: '/api/v1/api-keys',
-        headers: ['Origin' => 'https://decomu.site', 'Content-Type' => 'application/json']
+        headers: ['Origin' => 'https://ciptaone.com', 'Content-Type' => 'application/json']
     );
     // Should not throw
     Security::validateCsrf($validReq, $config);

@@ -1,4 +1,4 @@
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
 import logging
 import uuid
 from fastapi import FastAPI, Request, status
@@ -16,13 +16,13 @@ logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-logger = logging.getLogger("decomu_router")
+logger = logging.getLogger("ciptaone_router")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize SQLite tables/migrations if in SQLite mode
-    logger.info(f"Starting decomu-ai-router (Env: {settings.APP_ENV}, DB_MODE: {settings.DB_MODE})")
+    logger.info(f"Starting ai-ciptaone-router (Env: {settings.APP_ENV}, DB_MODE: {settings.DB_MODE})")
     if settings.DB_MODE == "sqlite":
         db.init_schema()
         logger.info("Local SQLite database schema initialized.")
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Decomu AI Router Gateway",
+    title="AI Ciptaone Router Gateway",
     description="High-performance, secure AI Router & API Gateway compatible with OpenAI standards",
     version="0.1.0",
     lifespan=lifespan,

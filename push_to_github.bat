@@ -1,6 +1,6 @@
-@echo off
+﻿@echo off
 setlocal
-title Push Decomu AI Router to GitHub
+title Push AI Ciptaone Router to GitHub
 
 echo ========================================================
 echo   PUSH CODEBASE KE GITHUB: https://github.com/dwyn-ux/ai-ciptaone.git
