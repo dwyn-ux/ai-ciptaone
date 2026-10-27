@@ -137,6 +137,8 @@ class TopupService
             'status' => 'pending',
             'expires_at' => gmdate('Y-m-d\TH:i:s\Z', $expiresAt),
             'checkout_url' => $checkoutUrl,
+            'qr_url' => $invoiceData['qr_url'] ?? null,
+            'qr_string' => $invoiceData['qr_string'] ?? null,
             'instructions' => $instructions,
         ];
     }

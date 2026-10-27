@@ -32,22 +32,35 @@ abstract class BaseController
     }
 
     /**
-     * Resolves authenticated user from session cookie or Bearer session token.
+     * Resolves authenticated user from session cookie, Bearer session token, or Bearer API Key.
      */
     protected function getAuthUser(Request $request): array
     {
-        $token = $request->getCookie((string)$this->config->get('SESSION_COOKIE_NAME', 'ciptaone_session'));
-        if (!$token) {
-            $bearer = $request->getBearerToken();
-            if ($bearer && !str_starts_with($bearer, 'sk-live-')) {
-                $token = $bearer;
+        $bearer = $request->getBearerToken();
+
+        // 1. Mobile & Server Client: Support direct authentication via API Key (sk-live-...)
+        if ($bearer && str_starts_with($bearer, 'sk-live-')) {
+            $keyRecord = $this->apiKeyService->validateApiKey($bearer);
+            if ($keyRecord === null) {
+                throw new AppError(ErrorCode::UNAUTHORIZED, 'API key tidak valid atau telah dicabut.', 401);
             }
+            $user = $this->authService->getUserById((string)$keyRecord['user_id']);
+            if ($user === null) {
+                throw new AppError(ErrorCode::UNAUTHORIZED, 'Pengguna pemilik API key tidak ditemukan atau nonaktif.', 401);
+            }
+            return $user;
+        }
+
+        // 2. Web Client: Session Cookie or Bearer Session Token
+        $token = $request->getCookie((string)$this->config->get('SESSION_COOKIE_NAME', 'ciptaone_session'));
+        if (!$token && $bearer) {
+            $token = $bearer;
         }
 
         if (!$token) {
             throw new AppError(
                 ErrorCode::UNAUTHORIZED,
-                'Silakan login terlebih dahulu.',
+                'Silakan sertakan Header Authorization Bearer API Key atau login terlebih dahulu.',
                 401
             );
         }

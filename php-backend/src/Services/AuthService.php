@@ -170,6 +170,29 @@ class AuthService
         ];
     }
 
+    public function getUserById(string $userId): ?array
+    {
+        $row = $this->db->fetchOne(
+            "SELECT id, email_normalized, email_verified_at, status, role, created_at
+             FROM users
+             WHERE id = ? AND status = 'active'",
+            [$userId]
+        );
+
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'id' => $row['id'],
+            'email' => $row['email_normalized'],
+            'email_verified' => !empty($row['email_verified_at']),
+            'status' => $row['status'],
+            'role' => $row['role'],
+            'created_at' => gmdate('Y-m-d\TH:i:s\Z', strtotime($row['created_at'])),
+        ];
+    }
+
     public function logout(string $rawToken): void
     {
         if (trim($rawToken) === '') {
