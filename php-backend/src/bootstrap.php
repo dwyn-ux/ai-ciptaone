@@ -145,10 +145,12 @@ function createApplicationRouter(): \Ciptaone\Core\Router {
     $router->get('/api/v1/topups/{identifier}', [$topupCtrl, 'getTopupStatus']);
     $router->post('/api/v1/topups/{identifier}/proof', [$topupCtrl, 'uploadProof']);
 
-    // Webhooks (Supported with /api/v1 prefix and direct /v1 prefix)
+    // Webhooks (Dual-Bot Telegram & Payment Gateways)
     $router->post('/api/v1/webhooks/telegram', [$webhookCtrl, 'handleTelegramWebhook']);
+    $router->post('/api/v1/webhooks/telegram-report', [$webhookCtrl, 'handleTelegramReportWebhook']);
     $router->post('/api/v1/webhooks/{gateway}', [$webhookCtrl, 'handlePaymentGatewayWebhook']);
     $router->post('/v1/webhooks/telegram', [$webhookCtrl, 'handleTelegramWebhook']);
+    $router->post('/v1/webhooks/telegram-report', [$webhookCtrl, 'handleTelegramReportWebhook']);
     $router->post('/v1/webhooks/{gateway}', [$webhookCtrl, 'handlePaymentGatewayWebhook']);
 
     // Admin Operations

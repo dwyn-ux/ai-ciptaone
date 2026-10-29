@@ -19,6 +19,8 @@ class TelegramBotService
 {
     private ?string $botToken;
     private ?string $baseUrl;
+    private ?string $reportBotToken;
+    private ?string $reportBaseUrl;
     private Config $config;
 
     public function __construct(?Config $config = null)
@@ -26,6 +28,10 @@ class TelegramBotService
         $this->config = $config ?? Config::getInstance();
         $this->botToken = (string)$this->config->get('TELEGRAM_BOT_TOKEN', '');
         $this->baseUrl = $this->botToken !== '' ? "https://api.telegram.org/bot{$this->botToken}" : null;
+
+        $reportToken = $this->config->getTelegramReportBotToken();
+        $this->reportBotToken = $reportToken !== '' ? $reportToken : $this->botToken;
+        $this->reportBaseUrl = $this->reportBotToken !== '' ? "https://api.telegram.org/bot{$this->reportBotToken}" : $this->baseUrl;
     }
 
     /**
@@ -39,7 +45,8 @@ class TelegramBotService
         string $gateway
     ): void {
         $adminIds = $this->config->getTelegramAdminIds();
-        if ($this->baseUrl === null || empty($adminIds)) {
+        $reportBase = $this->reportBaseUrl ?? $this->baseUrl;
+        if ($reportBase === null || empty($adminIds)) {
             return;
         }
 
@@ -63,7 +70,7 @@ class TelegramBotService
                 "✅ _Saldo otomatis masuk ke akun pengguna tanpa perlu verifikasi manual._";
 
         foreach ($adminIds as $adminId) {
-            $this->sendMessage($adminId, $text);
+            $this->sendMessage($adminId, $text, null, 'Markdown', true);
         }
     }
 
@@ -249,7 +256,8 @@ class TelegramBotService
     public function sendReportToAdmins(string $period, Database $db): void
     {
         $adminIds = $this->config->getTelegramAdminIds();
-        if ($this->baseUrl === null || empty($adminIds)) {
+        $reportBase = $this->reportBaseUrl ?? $this->baseUrl;
+        if ($reportBase === null || empty($adminIds)) {
             return;
         }
 
@@ -257,7 +265,7 @@ class TelegramBotService
         $replyMarkup = $this->getReportMenuMarkup();
 
         foreach ($adminIds as $adminId) {
-            $this->sendMessage($adminId, $reportText, $replyMarkup);
+            $this->sendMessage($adminId, $reportText, $replyMarkup, 'Markdown', true);
         }
     }
 
@@ -315,7 +323,8 @@ class TelegramBotService
         TopupService $topupService,
         ApiKeyService $apiKeyService,
         ?TripayService $tripayService = null,
-        ?DuitkuService $duitkuService = null
+        ?DuitkuService $duitkuService = null,
+        string $botRole = 'all'
     ): array {
         // 1. Handle Inline Button Callback Queries
         if (isset($update['callback_query']) && is_array($update['callback_query'])) {
@@ -325,7 +334,8 @@ class TelegramBotService
                 $topupService,
                 $apiKeyService,
                 $tripayService,
-                $duitkuService
+                $duitkuService,
+                $botRole
             );
         }
 
@@ -334,7 +344,8 @@ class TelegramBotService
             return $this->handleTextMessage(
                 $update['message'],
                 $db,
-                $apiKeyService
+                $apiKeyService,
+                $botRole
             );
         }
 
@@ -342,12 +353,13 @@ class TelegramBotService
     }
 
     /**
-     * Handle incoming text messages (/start, /beli, /saldo, /key, /help).
+     * Handle incoming text messages (/start, /beli, /saldo, /key, /help, /laporan).
      */
     public function handleTextMessage(
         array $message,
         Database $db,
-        ApiKeyService $apiKeyService
+        ApiKeyService $apiKeyService,
+        string $botRole = 'all'
     ): array {
         $chatId = $message['chat']['id'] ?? null;
         $from = (array)($message['from'] ?? []);
@@ -360,10 +372,80 @@ class TelegramBotService
             return ['status' => 'invalid_message'];
         }
 
-        // Auto-provision user account
-        $user = $this->getOrCreateTelegramUser($telegramUserId, $username, $firstName, $db);
-
         $command = strtolower(explode(' ', $text)[0]);
+
+        // Security check for admin reports across all bot roles
+        if (in_array($command, ['/laporan', '/report', '/daily', '/weekly', '/monthly', '/laporan_harian', '/laporan_mingguan', '/laporan_bulanan', '/ringkasan', '/stats', '/all_time'], true)) {
+            $adminIds = $this->config->getTelegramAdminIds();
+            if (!in_array($telegramUserId, $adminIds, false)) {
+                $this->sendMessage($chatId, '⛔ Akses ditolak: Menu laporan khusus administrator.');
+                return ['status' => 'unauthorized'];
+            }
+        }
+
+        // ==========================================
+        // DEDICATED REPORT BOT HANDLERS (Admin Only)
+        // ==========================================
+        if ($botRole === 'report') {
+            switch ($command) {
+                case '/start':
+                    $welcome = "📊 *Halo, Administrator!*\n\n" .
+                               "Selamat datang di *WAI-Bot Laporan & Analitik*.\n\n" .
+                               "Bot ini memantau performa keuangan, omset masuk, penambahan user, dan konsumsi token AI secara otomatis.\n\n" .
+                               "Silakan pilih periode laporan di bawah:";
+                    $this->sendMessage($chatId, $welcome, $this->getReportMenuMarkup(), 'Markdown', true);
+                    return ['status' => 'handled', 'command' => '/start'];
+
+                case '/laporan':
+                case '/report':
+                case '/ringkasan':
+                    $menuText = "📊 *PUSAT ANALITIK & LAPORAN AI ROUTER*\n\n" .
+                                "Pilih periode laporan keuangan & token:";
+                    $this->sendMessage($chatId, $menuText, $this->getReportMenuMarkup(), 'Markdown', true);
+                    return ['status' => 'handled', 'command' => '/laporan'];
+
+                case '/laporan_harian':
+                case '/daily':
+                case '/harian':
+                    $rep = $this->generateReport('daily', $db);
+                    $this->sendMessage($chatId, $rep, $this->getReportMenuMarkup(), 'Markdown', true);
+                    return ['status' => 'handled', 'command' => '/laporan_harian'];
+
+                case '/laporan_mingguan':
+                case '/weekly':
+                case '/mingguan':
+                    $rep = $this->generateReport('weekly', $db);
+                    $this->sendMessage($chatId, $rep, $this->getReportMenuMarkup(), 'Markdown', true);
+                    return ['status' => 'handled', 'command' => '/laporan_mingguan'];
+
+                case '/laporan_bulanan':
+                case '/monthly':
+                case '/bulanan':
+                    $rep = $this->generateReport('monthly', $db);
+                    $this->sendMessage($chatId, $rep, $this->getReportMenuMarkup(), 'Markdown', true);
+                    return ['status' => 'handled', 'command' => '/laporan_bulanan'];
+
+                case '/stats':
+                case '/all_time':
+                    $rep = $this->generateReport('all_time', $db);
+                    $this->sendMessage($chatId, $rep, $this->getReportMenuMarkup(), 'Markdown', true);
+                    return ['status' => 'handled', 'command' => '/stats'];
+
+                default:
+                    $help = "📊 *PERINTAH BOT LAPORAN ADMIN*\n\n" .
+                            "• `/laporan` - Menu interaktif periode laporan\n" .
+                            "• `/daily` / `/harian` - Rekap 24 jam terakhir\n" .
+                            "• `/weekly` / `/mingguan` - Rekap 7 hari terakhir\n" .
+                            "• `/monthly` / `/bulanan` - Rekap 30 hari terakhir\n" .
+                            "• `/stats` - Total keseluruhan (all-time)\n\n" .
+                            "💰 _Bot ini juga otomatis mengirimkan notifikasi instan setiap ada saldo yang dibeli oleh user._";
+                    $this->sendMessage($chatId, $help, $this->getReportMenuMarkup(), 'Markdown', true);
+                    return ['status' => 'handled', 'command' => '/help'];
+            }
+        }
+
+        // Auto-provision user account for customer bot
+        $user = $this->getOrCreateTelegramUser($telegramUserId, $username, $firstName, $db);
 
         switch ($command) {
             case '/start':
@@ -479,7 +561,8 @@ class TelegramBotService
         ?TopupService $topupService = null,
         ?ApiKeyService $apiKeyService = null,
         ?TripayService $tripayService = null,
-        ?DuitkuService $duitkuService = null
+        ?DuitkuService $duitkuService = null,
+        string $botRole = 'all'
     ): array {
         $callbackId = (string)($callbackQuery['id'] ?? '');
         $fromUser = (array)($callbackQuery['from'] ?? []);
@@ -517,8 +600,9 @@ class TelegramBotService
         // 1. Admin Analytics & Reporting Callbacks (report:daily, report:weekly, report:monthly, report:all_time)
         if (str_starts_with($data, 'report:')) {
             $adminIds = $this->config->getTelegramAdminIds();
+            $useReport = ($botRole === 'report') || ($this->reportBotToken === $this->botToken);
             if (!in_array($telegramUserId, $adminIds, false)) {
-                $this->answerCallback($callbackId, '⛔ Akses ditolak: Menu laporan khusus administrator.', true);
+                $this->answerCallback($callbackId, '⛔ Akses ditolak: Menu laporan khusus administrator.', true, $useReport);
                 return ['status' => 'unauthorized'];
             }
 
@@ -527,10 +611,10 @@ class TelegramBotService
                 $period = 'daily';
             }
 
-            $this->answerCallback($callbackId, '📊 Menyiapkan laporan...');
+            $this->answerCallback($callbackId, '📊 Menyiapkan laporan...', false, $useReport);
             $reportText = $this->generateReport($period, $db);
             if ($chatId !== null) {
-                $this->sendMessage($chatId, $reportText, $this->getReportMenuMarkup());
+                $this->sendMessage($chatId, $reportText, $this->getReportMenuMarkup(), 'Markdown', $useReport);
             }
             return ['status' => 'handled', 'report' => $period];
         }
@@ -909,28 +993,40 @@ class TelegramBotService
         return $db->fetchOne('SELECT * FROM users WHERE id = ?', [$userId]);
     }
 
-    public function sendMessage(int|string $chatId, string $text, ?array $replyMarkup = null): ?array
-    {
-        if ($this->baseUrl === null) {
+    public function sendMessage(
+        int|string $chatId,
+        string $text,
+        ?array $replyMarkup = null,
+        string $parseMode = 'Markdown',
+        bool $useReportBot = false
+    ): ?array {
+        $base = $useReportBot ? ($this->reportBaseUrl ?? $this->baseUrl) : $this->baseUrl;
+        if ($base === null) {
             return null;
         }
 
         $payload = [
             'chat_id' => $chatId,
             'text' => $text,
-            'parse_mode' => 'Markdown',
+            'parse_mode' => $parseMode,
         ];
 
         if ($replyMarkup !== null) {
             $payload['reply_markup'] = $replyMarkup;
         }
 
-        return $this->sendTelegramRequest('/sendMessage', $payload);
+        return $this->sendTelegramRequest('/sendMessage', $payload, $useReportBot);
     }
 
-    public function sendPhoto(int|string $chatId, string $photoUrl, string $caption = '', ?array $replyMarkup = null): ?array
-    {
-        if ($this->baseUrl === null) {
+    public function sendPhoto(
+        int|string $chatId,
+        string $photoUrl,
+        string $caption = '',
+        ?array $replyMarkup = null,
+        bool $useReportBot = false
+    ): ?array {
+        $base = $useReportBot ? ($this->reportBaseUrl ?? $this->baseUrl) : $this->baseUrl;
+        if ($base === null) {
             return null;
         }
 
@@ -945,12 +1041,13 @@ class TelegramBotService
             $payload['reply_markup'] = $replyMarkup;
         }
 
-        return $this->sendTelegramRequest('/sendPhoto', $payload);
+        return $this->sendTelegramRequest('/sendPhoto', $payload, $useReportBot);
     }
 
-    private function answerCallback(string $callbackId, string $text, bool $alert = false): void
+    private function answerCallback(string $callbackId, string $text, bool $alert = false, bool $useReportBot = false): void
     {
-        if ($this->baseUrl === null || $callbackId === '') {
+        $base = $useReportBot ? ($this->reportBaseUrl ?? $this->baseUrl) : $this->baseUrl;
+        if ($base === null || $callbackId === '') {
             return;
         }
 
@@ -958,12 +1055,13 @@ class TelegramBotService
             'callback_query_id' => $callbackId,
             'text' => $text,
             'show_alert' => $alert,
-        ]);
+        ], $useReportBot);
     }
 
-    private function editMessageText(int|string $chatId, int $messageId, string $text): void
+    private function editMessageText(int|string $chatId, int $messageId, string $text, bool $useReportBot = false): void
     {
-        if ($this->baseUrl === null) {
+        $base = $useReportBot ? ($this->reportBaseUrl ?? $this->baseUrl) : $this->baseUrl;
+        if ($base === null) {
             return;
         }
 
@@ -972,16 +1070,17 @@ class TelegramBotService
             'message_id' => $messageId,
             'text' => $text,
             'parse_mode' => 'Markdown',
-        ]);
+        ], $useReportBot);
     }
 
-    private function sendTelegramRequest(string $endpoint, array $payload): ?array
+    private function sendTelegramRequest(string $endpoint, array $payload, bool $useReportBot = false): ?array
     {
-        if ($this->baseUrl === null) {
+        $base = $useReportBot ? ($this->reportBaseUrl ?? $this->baseUrl) : $this->baseUrl;
+        if ($base === null) {
             return null;
         }
 
-        $ch = curl_init("{$this->baseUrl}{$endpoint}");
+        $ch = curl_init("{$base}{$endpoint}");
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($payload),

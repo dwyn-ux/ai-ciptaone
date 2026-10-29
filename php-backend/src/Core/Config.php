@@ -64,10 +64,12 @@ class Config
             'MANUAL_ACCOUNT_HOLDER' => 'AI Ciptaone Router',
             'MANUAL_QRIS_IMAGE_URL' => '',
 
-            // Telegram
-            'TELEGRAM_BOT_TOKEN' => '',
+            // Telegram Dual-Bot Architecture (Customer & Admin Report)
+            'TELEGRAM_BOT_TOKEN' => '',                 // Bot 1: Customer purchase, balance, keys
+            'TELEGRAM_REPORT_BOT_TOKEN' => '',          // Bot 2: Admin analytics, reports & alerts (optional)
             'TELEGRAM_ADMIN_IDS' => '',
             'TELEGRAM_WEBHOOK_SECRET' => '',
+            'TELEGRAM_REPORT_WEBHOOK_SECRET' => '',
 
             // Tripay Payment Gateway (Dynamic QRIS)
             'TRIPAY_API_KEY' => '',
@@ -201,6 +203,15 @@ class Config
     {
         $raw = (string)$this->get('CORS_ORIGINS', '');
         return array_values(array_filter(array_map('trim', explode(',', $raw))));
+    }
+
+    public function getTelegramReportBotToken(): string
+    {
+        $reportToken = trim((string)$this->get('TELEGRAM_REPORT_BOT_TOKEN', ''));
+        if ($reportToken !== '') {
+            return $reportToken;
+        }
+        return trim((string)$this->get('TELEGRAM_BOT_TOKEN', ''));
     }
 
     public function getTelegramAdminIds(): array

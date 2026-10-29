@@ -40,7 +40,22 @@ class WebhookController extends BaseController
 
     public function handleTelegramWebhook(Request $request): void
     {
-        $expectedSecret = (string)$this->config->get('TELEGRAM_WEBHOOK_SECRET', '');
+        $this->processTelegramUpdate($request, 'customer');
+    }
+
+    public function handleTelegramReportWebhook(Request $request): void
+    {
+        $this->processTelegramUpdate($request, 'report');
+    }
+
+    private function processTelegramUpdate(Request $request, string $botRole): void
+    {
+        $secretKey = $botRole === 'report' ? 'TELEGRAM_REPORT_WEBHOOK_SECRET' : 'TELEGRAM_WEBHOOK_SECRET';
+        $expectedSecret = (string)$this->config->get($secretKey, '');
+        if ($expectedSecret === '' && $botRole === 'report') {
+            $expectedSecret = (string)$this->config->get('TELEGRAM_WEBHOOK_SECRET', '');
+        }
+
         if ($expectedSecret !== '') {
             $receivedSecret = $request->getHeader('X-Telegram-Bot-Api-Secret-Token');
             if ($receivedSecret !== $expectedSecret) {
@@ -59,7 +74,8 @@ class WebhookController extends BaseController
             $this->topupService,
             $apiKeyService,
             $tripayService,
-            $duitkuService
+            $duitkuService,
+            $botRole
         );
 
         Response::json(['ok' => true]);
