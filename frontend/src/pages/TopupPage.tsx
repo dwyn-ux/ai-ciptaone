@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ExternalLink,
   Zap,
+  XCircle,
 } from "lucide-react";
 
 interface TopupResponse {
@@ -61,6 +62,7 @@ export const TopupPage: React.FC = () => {
   const [history, setHistory] = useState<TopupItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -205,6 +207,33 @@ export const TopupPage: React.FC = () => {
     }
   };
 
+  const handleCancelTopup = async (orderId?: string) => {
+    const targetOrderId = orderId || activeInvoice?.order_id;
+    if (!targetOrderId) return;
+
+    if (!window.confirm(`Apakah Anda yakin ingin membatalkan tagihan pembayaran ${targetOrderId}?`)) {
+      return;
+    }
+
+    setCancelling(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      await apiFetch(`/api/v1/topups/${targetOrderId}/cancel`, {
+        method: "POST",
+      });
+      if (activeInvoice && activeInvoice.order_id === targetOrderId) {
+        setActiveInvoice(null);
+      }
+      setSuccessMsg(`Tagihan ${targetOrderId} berhasil dibatalkan.`);
+      await fetchHistory(false);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Gagal membatalkan tagihan pembayaran.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const packages = [10000, 25000, 50000, 100000, 250000];
 
   return (
@@ -330,13 +359,21 @@ export const TopupPage: React.FC = () => {
                   <p className="text-xs text-amber-800 leading-relaxed">
                     Tautan pembayaran atau kode QRIS sedang diproses oleh gateway. Silakan klik tombol di bawah untuk memuat tautan atau buat tagihan baru.
                   </p>
-                  <div className="flex items-center space-x-3 pt-1">
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
                     <button
                       type="button"
                       onClick={handleRefreshStatus}
                       className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
                     >
                       🔄 Muat Ulang Tautan Pembayaran
+                    </button>
+                    <button
+                      type="button"
+                      disabled={cancelling}
+                      onClick={() => handleCancelTopup()}
+                      className="px-4 py-2 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50"
+                    >
+                      {cancelling ? "Membatalkan..." : "✕ Batalkan Tagihan"}
                     </button>
                     <button
                       type="button"
@@ -358,7 +395,7 @@ export const TopupPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setActiveInvoice(null)}
@@ -366,14 +403,28 @@ export const TopupPage: React.FC = () => {
                 >
                   ← Buat Tagihan Baru
                 </button>
-                <button
-                  type="button"
-                  onClick={handleRefreshStatus}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition"
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  <span>Periksa Status Pembayaran</span>
-                </button>
+                <div className="flex items-center space-x-2">
+                  {activeInvoice.status === "pending" && (
+                    <button
+                      type="button"
+                      disabled={cancelling}
+                      onClick={() => handleCancelTopup()}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition disabled:opacity-50"
+                      title="Batalkan tagihan pembayaran ini"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>{cancelling ? "Membatalkan..." : "Batalkan Pembayaran"}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRefreshStatus}
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Periksa Status Pembayaran</span>
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -457,35 +508,6 @@ export const TopupPage: React.FC = () => {
                     </div>
                   </label>
 
-                  {/* Tripay Closed Dynamic QRIS */}
-                  <label
-                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
-                      paymentMethod === "tripay_qris"
-                        ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      value="tripay_qris"
-                      checked={paymentMethod === "tripay_qris"}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <div className="ml-3">
-                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
-                        <span>Tripay QRIS Dinamis Otomatis</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
-                          QRIS 1-Detik
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        Pindai QRIS langsung di layar menggunakan semua aplikasi e-wallet (GoPay, OVO, ShopeePay, DANA) dan m-Banking.
-                      </div>
-                    </div>
-                  </label>
-
                   {/* DANA Dynamic QRIS */}
                   <label
                     className={`flex items-start p-3.5 rounded-xl border opacity-50 bg-slate-50 cursor-not-allowed`}
@@ -540,7 +562,35 @@ export const TopupPage: React.FC = () => {
                 {history.map((item) => (
                   <div key={item.id} className="py-3 flex items-center justify-between text-xs">
                     <div>
-                      <div className="font-semibold text-slate-800">{item.order_id}</div>
+                      <div className="font-semibold text-slate-800 flex items-center space-x-1.5">
+                        <span>{item.order_id}</span>
+                        {item.status === "pending" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              apiFetch<any>(`/api/v1/topups/${item.order_id}`).then((fullDetails) => {
+                                setActiveInvoice({
+                                  topup_id: fullDetails.id,
+                                  order_id: fullDetails.order_id,
+                                  amount_minor: fullDetails.amount_minor,
+                                  currency: fullDetails.currency,
+                                  credits_to_grant: fullDetails.credits_to_grant,
+                                  payment_method: fullDetails.payment_method,
+                                  status: fullDetails.status,
+                                  expires_at: fullDetails.expires_at,
+                                  checkout_url: fullDetails.checkout_url,
+                                  qr_url: fullDetails.qr_url,
+                                  qr_string: fullDetails.qr_string,
+                                  instructions: fullDetails.instructions || {},
+                                });
+                              }).catch(console.error);
+                            }}
+                            className="text-[10px] text-indigo-600 hover:underline font-normal"
+                          >
+                            (Lihat Tagihan)
+                          </button>
+                        )}
+                      </div>
                       <div className="text-slate-400 text-[11px]">
                         Rp{item.amount_minor.toLocaleString("id-ID")} •{" "}
                         {item.payment_method} •{" "}
@@ -548,7 +598,7 @@ export const TopupPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right flex items-center space-x-2">
                       <span
                         className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                           item.status === "paid"
@@ -558,8 +608,25 @@ export const TopupPage: React.FC = () => {
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {item.status === "paid" ? "Lunas" : item.status}
+                        {item.status === "paid"
+                          ? "Lunas"
+                          : item.status === "rejected"
+                          ? "Dibatalkan"
+                          : item.status === "pending"
+                          ? "Menunggu"
+                          : item.status}
                       </span>
+                      {item.status === "pending" && (
+                        <button
+                          type="button"
+                          disabled={cancelling}
+                          onClick={() => handleCancelTopup(item.order_id)}
+                          className="text-[10px] text-rose-600 hover:text-rose-800 font-medium px-1.5 py-0.5 border border-rose-200 rounded hover:bg-rose-50 transition disabled:opacity-50"
+                          title="Batalkan tagihan ini"
+                        >
+                          Batalkan
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

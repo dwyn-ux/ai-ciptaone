@@ -56,7 +56,11 @@ class TopupService
     public function getAdapter(string $paymentMethod): BasePaymentAdapter
     {
         return match ($paymentMethod) {
-            'tripay_qris' => $this->tripayAdapter,
+            'tripay_qris' => throw new AppError(
+                ErrorCode::INVALID_REQUEST,
+                'Metode pembayaran Tripay dinonaktifkan. Silakan gunakan Duitku Gateway.',
+                400
+            ),
             'duitku', 'duitku_qris' => $this->duitkuAdapter,
             'dana_qris_dynamic' => $this->danaAdapter,
             'manual_transfer', 'manual_qris' => throw new AppError(
@@ -386,4 +390,55 @@ class TopupService
             return $r;
         }, $rows);
     }
+
+    public function cancelTopup(string $identifier, string $userId): array
+    {
+        $topup = $this->db->fetchOne(
+            'SELECT * FROM topups WHERE (id = ? OR order_id = ?) AND user_id = ?',
+            [$identifier, $identifier, $userId]
+        );
+
+        if ($topup === null) {
+            throw new AppError(
+                ErrorCode::NOT_FOUND,
+                'Invoice top-up tidak ditemukan.',
+                404
+            );
+        }
+
+        if ($topup['status'] !== 'pending') {
+            throw new AppError(
+                ErrorCode::INVALID_REQUEST,
+                "Hanya invoice dengan status 'menunggu pembayaran' yang dapat dibatalkan.",
+                400
+            );
+        }
+
+        $nowIso = gmdate('Y-m-d H:i:s');
+        $this->db->execute(
+            "UPDATE topups
+             SET status = 'rejected', rejection_reason = ?, reviewed_by = ?, reviewed_at = ?, updated_at = ?
+             WHERE id = ?",
+            ['Dibatalkan oleh pengguna.', $userId, $nowIso, $nowIso, $topup['id']]
+        );
+
+        $this->auditService->logAction(
+            $userId,
+            'cancel_topup',
+            'topup',
+            $topup['order_id'],
+            [
+                'order_id' => $topup['order_id'],
+                'amount_minor' => (int)$topup['amount_minor'],
+                'action' => 'user_cancel',
+            ]
+        );
+
+        return [
+            'status' => 'rejected',
+            'message' => 'Pembayaran top-up berhasil dibatalkan.',
+            'order_id' => $topup['order_id'],
+        ];
+    }
 }
+

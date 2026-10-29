@@ -99,4 +99,15 @@ class TopupController extends BaseController
 
         Response::json($res);
     }
+
+    public function cancelTopup(Request $request, array $params): void
+    {
+        Security::validateCsrf($request, $this->config);
+        $user = $this->getAuthUser($request);
+        $identifier = (string)($params['identifier'] ?? '');
+
+        $res = $this->topupService->cancelTopup($identifier, $user['id']);
+        Response::json($res);
+    }
 }
+

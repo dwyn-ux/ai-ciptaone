@@ -140,6 +140,7 @@ function createApplicationRouter(): \Ciptaone\Core\Router {
     $router->post('/api/v1/topups', [$topupCtrl, 'createTopup']);
     $router->get('/api/v1/topups', [$topupCtrl, 'listTopups']);
     $router->get('/api/v1/topups/{identifier}', [$topupCtrl, 'getTopupStatus']);
+    $router->post('/api/v1/topups/{identifier}/cancel', [$topupCtrl, 'cancelTopup']);
     $router->post('/api/v1/topups/{identifier}/proof', [$topupCtrl, 'uploadProof']);
 
     // Webhooks (Dual-Bot Telegram & Payment Gateways)
