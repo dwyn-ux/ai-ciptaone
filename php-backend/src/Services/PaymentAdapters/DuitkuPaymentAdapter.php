@@ -38,7 +38,9 @@ class DuitkuPaymentAdapter extends BasePaymentAdapter
             $orderId,
             $amountMinor,
             "Pengguna {$userId}",
-            $userEmail
+            $userEmail,
+            '081234567890',
+            'SP'
         );
 
         $checkoutUrl = $result['payment_url'] ?: ($result['qr_url'] ?? '');

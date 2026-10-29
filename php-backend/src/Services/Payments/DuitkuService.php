@@ -136,10 +136,12 @@ class DuitkuService
             ]
         ];
 
+        $channel = (empty($paymentMethod) || in_array($paymentMethod, ['duitku', 'duitku_qris', 'qris'], true)) ? 'SP' : $paymentMethod;
+
         $payload = [
             'merchantCode' => $this->merchantCode,
             'paymentAmount' => $amount,
-            'paymentMethod' => $paymentMethod, // empty string = display all channels on Duitku hosted checkout
+            'paymentMethod' => $channel,
             'merchantOrderId' => $merchantOrderId,
             'productDetails' => $productDetails,
             'email' => $customerEmail ?: 'customer@ciptaone.com',
@@ -172,6 +174,8 @@ class DuitkuService
 
         if ($qrString !== '') {
             $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=' . urlencode($qrString);
+        } elseif ($paymentUrl !== '') {
+            $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=' . urlencode($paymentUrl);
         }
 
         return [

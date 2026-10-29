@@ -694,7 +694,9 @@ class TelegramBotService
                         $orderId,
                         $amount,
                         $firstName,
-                        (string)$user['email_normalized']
+                        (string)$user['email_normalized'],
+                        '081234567890',
+                        'SP'
                     );
 
                     $topupId = Security::generateId('top');
@@ -708,7 +710,7 @@ class TelegramBotService
                             provider_reference, amount_minor, currency, credits_to_grant,
                             status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
                             idempotency_key, paid_at, expires_at, created_at, updated_at
-                        ) VALUES (?, ?, ?, 'duitku', 'duitku', ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
+                        ) VALUES (?, ?, ?, 'duitku', 'duitku_qris', ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
                         [
                             $topupId, (string)$user['id'], $orderId,
                             $duitkuData['reference'] ?? $orderId, $amount, $amount,
@@ -717,18 +719,19 @@ class TelegramBotService
                     );
 
                     $formattedAmount = number_format($amount, 0, ',', '.');
-                    $caption = "🧾 *INVOICE PEMBAYARAN DUITKU*\n\n" .
+                    $caption = "🧾 *INVOICE PEMBAYARAN QRIS*\n\n" .
                                "• *Order ID:* `{$orderId}`\n" .
                                "• *Nominal:* *Rp{$formattedAmount}*\n" .
-                               "• *Metode:* QRIS & Virtual Account (BCA, Mandiri, BRI, BNI, dll)\n" .
+                               "• *Metode:* QRIS Dinamis (BCA, Mandiri, BRI, BNI, GoPay, OVO, Dana, ShopeePay)\n" .
                                "• *Masa Berlaku:* 60 Menit\n\n" .
                                "📱 *Petunjuk Pembayaran:*\n" .
-                               "Klik tombol *Bayar Sekarang* di bawah untuk membuka halaman pembayaran resmi Duitku atau scan QRIS bila tersedia.\n\n" .
+                               "1. Buka aplikasi e-Wallet atau Mobile Banking Anda.\n" .
+                               "2. Scan kode QRIS di atas dan selesaikan pembayaran.\n\n" .
                                "⚡ *Verifikasi Otomatis:* Saldo dan API Key Anda akan otomatis aktif dalam hitungan detik setelah pembayaran berhasil.";
 
                     $buttons = [];
                     if (!empty($duitkuData['payment_url'])) {
-                        $buttons[] = [['text' => '💳 Bayar Sekarang via Duitku', 'url' => $duitkuData['payment_url']]];
+                        $buttons[] = [['text' => '💳 Bayar via Duitku / Browser', 'url' => $duitkuData['payment_url']]];
                     }
                     $buttons[] = [['text' => '🔄 Cek Status Pembayaran', 'callback_data' => "check:{$orderId}"]];
                     $markup = ['inline_keyboard' => $buttons];
@@ -742,7 +745,7 @@ class TelegramBotService
 
                 } catch (\Throwable $e) {
                     error_log("Duitku Telegram topup error: " . $e->getMessage());
-                    // Fall through to Tripay or Manual
+                    // Fall through to Tripay or QR Fallback
                 }
             }
 
@@ -802,18 +805,15 @@ class TelegramBotService
 
                 } catch (\Throwable $e) {
                     error_log("Tripay Telegram topup error: " . $e->getMessage());
-                    // Fall through to Manual / Web option
+                    // Fall through to QR Fallback
                 }
             }
 
-            // Priority 3: Manual Bank Transfer & Website Top-up
-            $manualBankName = (string)$this->config->get('MANUAL_BANK_NAME', 'BCA');
-            $manualAccountNo = (string)$this->config->get('MANUAL_ACCOUNT_NO', '');
-            $manualAccountHolder = (string)$this->config->get('MANUAL_ACCOUNT_HOLDER', 'AI Ciptaone Router');
-            $manualQrisUrl = (string)$this->config->get('MANUAL_QRIS_IMAGE_URL', '');
+            // Priority 3: Fallback ke QRIS & Website Checkout (Seluruh pembayaran diarahkan ke QR)
+            $manualQrisUrl = trim((string)$this->config->get('MANUAL_QRIS_IMAGE_URL', ''));
 
             $dateStr = gmdate('Ymd');
-            $orderId = 'ORD-MN-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+            $orderId = 'ORD-QR-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
             $topupId = Security::generateId('top');
             $nowIso = gmdate('Y-m-d H:i:s');
             $expiresIso = gmdate('Y-m-d H:i:s', time() + 7200);
@@ -825,7 +825,7 @@ class TelegramBotService
                         provider_reference, amount_minor, currency, credits_to_grant,
                         status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
                         idempotency_key, paid_at, expires_at, created_at, updated_at
-                    ) VALUES (?, ?, ?, 'manual', 'manual_transfer', NULL, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
+                    ) VALUES (?, ?, ?, 'manual', 'manual_qris', NULL, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
                     [
                         $topupId, (string)$user['id'], $orderId,
                         $amount, $amount,
@@ -836,39 +836,26 @@ class TelegramBotService
 
             $formattedAmount = number_format($amount, 0, ',', '.');
             $buttons = [
-                [['text' => '🌐 Buka Top-up di Website', 'url' => 'https://ai.ciptaone.site/topup']],
+                [['text' => '💳 Bayar Sekarang via Web QRIS', 'url' => 'https://ai.ciptaone.site/topup']],
                 [['text' => '🔄 Cek Status Pembayaran', 'callback_data' => "check:{$orderId}"]],
             ];
 
-            if ($manualAccountNo !== '') {
-                $caption = "🧾 *INVOICE TOP-UP SALDO*\n\n" .
-                           "• *Order ID:* `{$orderId}`\n" .
-                           "• *Nominal:* *Rp{$formattedAmount}*\n" .
-                           "• *Bank:* *{$manualBankName}*\n" .
-                           "• *No. Rekening:* `{$manualAccountNo}`\n" .
-                           "• *Atas Nama:* {$manualAccountHolder}\n\n" .
-                           "📱 *Petunjuk Pembayaran:*\n" .
-                           "1. Silakan transfer tepat *Rp{$formattedAmount}* ke rekening di atas.\n" .
-                           "2. Anda juga dapat membayar otomatis via QRIS / VA di website:\n" .
-                           "👉 https://ai.ciptaone.site/topup\n\n" .
-                           "Setelah transfer, saldo akan diverifikasi secara aman.";
+            $caption = "🧾 *INVOICE PEMBAYARAN QRIS*\n\n" .
+                       "• *Order ID:* `{$orderId}`\n" .
+                       "• *Nominal:* *Rp{$formattedAmount}*\n" .
+                       "• *Metode:* QRIS & Pembayaran Instan\n\n" .
+                       "📱 *Petunjuk Pembayaran:*\n" .
+                       "1. Scan kode QRIS di atas dengan GoPay, OVO, Dana, ShopeePay, BCA, Mandiri, BRI, atau M-Banking lainnya.\n" .
+                       "2. Atau klik tombol *Bayar Sekarang via Web QRIS* di bawah untuk memilih metode pembayaran.\n\n" .
+                       "⚡ Saldo dan API Key Anda akan otomatis aktif setelah pembayaran selesai.";
 
-                if ($manualQrisUrl !== '') {
-                    $this->sendPhoto($chatId, $manualQrisUrl, $caption, ['inline_keyboard' => $buttons]);
-                } else {
-                    $this->sendMessage($chatId, $caption, ['inline_keyboard' => $buttons]);
-                }
-            } else {
-                $caption = "🧾 *INVOICE TOP-UP SALDO*\n\n" .
-                           "• *Order ID:* `{$orderId}`\n" .
-                           "• *Nominal:* *Rp{$formattedAmount}*\n\n" .
-                           "Silakan klik tombol di bawah untuk menyelesaikan pembayaran di website:\n" .
-                           "👉 https://ai.ciptaone.site/topup";
+            $qrImageUrl = $manualQrisUrl !== ''
+                ? $manualQrisUrl
+                : 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=' . urlencode("https://ai.ciptaone.site/topup");
 
-                $this->sendMessage($chatId, $caption, ['inline_keyboard' => $buttons]);
-            }
+            $this->sendPhoto($chatId, $qrImageUrl, $caption, ['inline_keyboard' => $buttons]);
 
-            return ['status' => 'manual_or_web', 'order_id' => $orderId];
+            return ['status' => 'qris_fallback', 'order_id' => $orderId];
         }
 
         // 4. Customer Check Status Action (check:ORD-XXXX)
