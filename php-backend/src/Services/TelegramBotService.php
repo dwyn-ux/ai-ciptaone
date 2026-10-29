@@ -671,12 +671,14 @@ class TelegramBotService
             }
 
             if ($chatId === null) {
-                return ['status' => 'no_chat_id'];
+                $chatId = $telegramUserId;
             }
 
-            // Priority: Duitku (if configured) or Tripay
+            // Immediately answer callback so Telegram client stops loading spinner
+            $this->answerCallback($callbackId, 'Memproses invoice ' . number_format($amount, 0, ',', '.') . '...');
+
+            // Priority 1: Duitku (if configured)
             if ($duitku->isConfigured()) {
-                $this->answerCallback($callbackId, 'Membuat tagihan Duitku (QRIS & VA)...');
                 try {
                     $dateStr = gmdate('Ymd');
                     $orderId = 'ORD-DK-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
@@ -690,7 +692,8 @@ class TelegramBotService
 
                     $topupId = Security::generateId('top');
                     $nowIso = gmdate('Y-m-d H:i:s');
-                    $expiresIso = gmdate('Y-m-d H:i:s', (int)$duitkuData['expired_time']);
+                    $expiredTime = (int)($duitkuData['expired_time'] ?? (time() + 3600));
+                    $expiresIso = gmdate('Y-m-d H:i:s', $expiredTime);
 
                     $db->execute(
                         "INSERT INTO topups (
@@ -701,7 +704,7 @@ class TelegramBotService
                         ) VALUES (?, ?, ?, 'duitku', 'duitku', ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
                         [
                             $topupId, (string)$user['id'], $orderId,
-                            $duitkuData['reference'], $amount, $amount,
+                            $duitkuData['reference'] ?? $orderId, $amount, $amount,
                             "topup_order_{$orderId}", $expiresIso, $nowIso, $nowIso
                         ]
                     );
@@ -728,20 +731,20 @@ class TelegramBotService
                     } else {
                         $this->sendMessage($chatId, $caption, $markup);
                     }
-                    return ['status' => 'success', 'order_id' => $orderId];
+                    return ['status' => 'success', 'order_id' => $orderId, 'gateway' => 'duitku'];
 
                 } catch (\Throwable $e) {
-                    $this->sendMessage($chatId, "❌ Gagal membuat transaksi Duitku: {$e->getMessage()}");
-                    return ['status' => 'error', 'error' => $e->getMessage()];
+                    error_log("Duitku Telegram topup error: " . $e->getMessage());
+                    // Fall through to Tripay or Manual
                 }
-            } elseif ($tripay->isConfigured()) {
-                $this->answerCallback($callbackId, 'Membuat QRIS Dinamis Tripay...');
+            }
+
+            // Priority 2: Tripay (if configured or fallback)
+            if ($tripay->isConfigured()) {
                 try {
-                    // Generate unique order ID
                     $dateStr = gmdate('Ymd');
                     $orderId = 'ORD-TP-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
 
-                    // Request Tripay Dynamic QRIS
                     $tripayData = $tripay->createQrisTransaction(
                         $orderId,
                         $amount,
@@ -749,10 +752,10 @@ class TelegramBotService
                         (string)$user['email_normalized']
                     );
 
-                    // Insert into topups table
                     $topupId = Security::generateId('top');
                     $nowIso = gmdate('Y-m-d H:i:s');
-                    $expiresIso = gmdate('Y-m-d H:i:s', (int)$tripayData['expired_time']);
+                    $expiredTime = (int)($tripayData['expired_time'] ?? (time() + 900));
+                    $expiresIso = gmdate('Y-m-d H:i:s', $expiredTime);
 
                     $db->execute(
                         "INSERT INTO topups (
@@ -763,7 +766,7 @@ class TelegramBotService
                         ) VALUES (?, ?, ?, 'tripay', 'tripay_qris', ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
                         [
                             $topupId, (string)$user['id'], $orderId,
-                            $tripayData['reference'], $amount, $amount,
+                            $tripayData['reference'] ?? $orderId, $amount, $amount,
                             "topup_order_{$orderId}", $expiresIso, $nowIso, $nowIso
                         ]
                     );
@@ -788,20 +791,77 @@ class TelegramBotService
                     ];
 
                     $this->sendPhoto($chatId, $tripayData['qr_url'], $caption, $checkMarkup);
-                    return ['status' => 'success', 'order_id' => $orderId];
+                    return ['status' => 'success', 'order_id' => $orderId, 'gateway' => 'tripay'];
 
                 } catch (\Throwable $e) {
-                    $this->sendMessage($chatId, "❌ Gagal membuat transaksi QRIS: {$e->getMessage()}");
-                    return ['status' => 'error', 'error' => $e->getMessage()];
+                    error_log("Tripay Telegram topup error: " . $e->getMessage());
+                    // Fall through to Manual / Web option
+                }
+            }
+
+            // Priority 3: Manual Bank Transfer & Website Top-up
+            $manualBankName = (string)$this->config->get('MANUAL_BANK_NAME', 'BCA');
+            $manualAccountNo = (string)$this->config->get('MANUAL_ACCOUNT_NO', '');
+            $manualAccountHolder = (string)$this->config->get('MANUAL_ACCOUNT_HOLDER', 'AI Ciptaone Router');
+            $manualQrisUrl = (string)$this->config->get('MANUAL_QRIS_IMAGE_URL', '');
+
+            $dateStr = gmdate('Ymd');
+            $orderId = 'ORD-MN-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+            $topupId = Security::generateId('top');
+            $nowIso = gmdate('Y-m-d H:i:s');
+            $expiresIso = gmdate('Y-m-d H:i:s', time() + 7200);
+
+            try {
+                $db->execute(
+                    "INSERT INTO topups (
+                        id, user_id, order_id, payment_provider, payment_method,
+                        provider_reference, amount_minor, currency, credits_to_grant,
+                        status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
+                        idempotency_key, paid_at, expires_at, created_at, updated_at
+                    ) VALUES (?, ?, ?, 'manual', 'manual_transfer', NULL, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
+                    [
+                        $topupId, (string)$user['id'], $orderId,
+                        $amount, $amount,
+                        "topup_order_{$orderId}", $expiresIso, $nowIso, $nowIso
+                    ]
+                );
+            } catch (\Throwable) {}
+
+            $formattedAmount = number_format($amount, 0, ',', '.');
+            $buttons = [
+                [['text' => '🌐 Buka Top-up di Website', 'url' => 'https://ai.ciptaone.site/topup']],
+                [['text' => '🔄 Cek Status Pembayaran', 'callback_data' => "check:{$orderId}"]],
+            ];
+
+            if ($manualAccountNo !== '') {
+                $caption = "🧾 *INVOICE TOP-UP SALDO*\n\n" .
+                           "• *Order ID:* `{$orderId}`\n" .
+                           "• *Nominal:* *Rp{$formattedAmount}*\n" .
+                           "• *Bank:* *{$manualBankName}*\n" .
+                           "• *No. Rekening:* `{$manualAccountNo}`\n" .
+                           "• *Atas Nama:* {$manualAccountHolder}\n\n" .
+                           "📱 *Petunjuk Pembayaran:*\n" .
+                           "1. Silakan transfer tepat *Rp{$formattedAmount}* ke rekening di atas.\n" .
+                           "2. Anda juga dapat membayar otomatis via QRIS / VA di website:\n" .
+                           "👉 https://ai.ciptaone.site/topup\n\n" .
+                           "Setelah transfer, saldo akan diverifikasi secara aman.";
+
+                if ($manualQrisUrl !== '') {
+                    $this->sendPhoto($chatId, $manualQrisUrl, $caption, ['inline_keyboard' => $buttons]);
+                } else {
+                    $this->sendMessage($chatId, $caption, ['inline_keyboard' => $buttons]);
                 }
             } else {
-                $this->sendMessage(
-                    $chatId,
-                    "⚠️ *Layanan Pembayaran Otomatis Sedang Disiapkan*\n\n" .
-                    "Payment gateway (Duitku / Tripay) sedang dalam konfigurasi oleh admin. Silakan hubungi admin atau gunakan opsi pembayaran manual di website."
-                );
-                return ['status' => 'payment_gateway_not_configured'];
+                $caption = "🧾 *INVOICE TOP-UP SALDO*\n\n" .
+                           "• *Order ID:* `{$orderId}`\n" .
+                           "• *Nominal:* *Rp{$formattedAmount}*\n\n" .
+                           "Silakan klik tombol di bawah untuk menyelesaikan pembayaran di website:\n" .
+                           "👉 https://ai.ciptaone.site/topup";
+
+                $this->sendMessage($chatId, $caption, ['inline_keyboard' => $buttons]);
             }
+
+            return ['status' => 'manual_or_web', 'order_id' => $orderId];
         }
 
         // 4. Customer Check Status Action (check:ORD-XXXX)
@@ -1015,7 +1075,12 @@ class TelegramBotService
             $payload['reply_markup'] = $replyMarkup;
         }
 
-        return $this->sendTelegramRequest('/sendMessage', $payload, $useReportBot);
+        $res = $this->sendTelegramRequest('/sendMessage', $payload, $useReportBot);
+        if (isset($res['ok']) && $res['ok'] === false && isset($res['description']) && str_contains($res['description'], "can't parse entities")) {
+            unset($payload['parse_mode']);
+            return $this->sendTelegramRequest('/sendMessage', $payload, $useReportBot);
+        }
+        return $res;
     }
 
     public function sendPhoto(
@@ -1041,7 +1106,12 @@ class TelegramBotService
             $payload['reply_markup'] = $replyMarkup;
         }
 
-        return $this->sendTelegramRequest('/sendPhoto', $payload, $useReportBot);
+        $res = $this->sendTelegramRequest('/sendPhoto', $payload, $useReportBot);
+        if (isset($res['ok']) && $res['ok'] === false && isset($res['description']) && str_contains($res['description'], "can't parse entities")) {
+            unset($payload['parse_mode']);
+            return $this->sendTelegramRequest('/sendPhoto', $payload, $useReportBot);
+        }
+        return $res;
     }
 
     private function answerCallback(string $callbackId, string $text, bool $alert = false, bool $useReportBot = false): void
@@ -1065,12 +1135,18 @@ class TelegramBotService
             return;
         }
 
-        $this->sendTelegramRequest('/editMessageText', [
+        $payload = [
             'chat_id' => $chatId,
             'message_id' => $messageId,
             'text' => $text,
             'parse_mode' => 'Markdown',
-        ], $useReportBot);
+        ];
+
+        $res = $this->sendTelegramRequest('/editMessageText', $payload, $useReportBot);
+        if (isset($res['ok']) && $res['ok'] === false && isset($res['description']) && str_contains($res['description'], "can't parse entities")) {
+            unset($payload['parse_mode']);
+            $this->sendTelegramRequest('/editMessageText', $payload, $useReportBot);
+        }
     }
 
     private function sendTelegramRequest(string $endpoint, array $payload, bool $useReportBot = false): ?array

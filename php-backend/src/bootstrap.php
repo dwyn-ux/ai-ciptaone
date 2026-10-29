@@ -69,47 +69,43 @@ function createApplicationRouter(): \Ciptaone\Core\Router {
         exit;
     });
 
-    // Root Landing Page & SPA Routes
-    $router->get('/', function (\Ciptaone\Core\Request $request) {
+    // Root Landing Page & SPA Routes (Dashboard, Playground, Top-up, Login, Register, History, API Keys)
+    $spaHandler = function (\Ciptaone\Core\Request $request) {
         $htmlFile = __DIR__ . '/../public/index.html';
         if (file_exists($htmlFile)) {
-            header('Content-Type: text/html; charset=utf-8');
+            if (!headers_sent()) {
+                header('Content-Type: text/html; charset=utf-8');
+            }
             readfile($htmlFile);
+            if (\Ciptaone\Core\Response::$exitOnSend) {
+                exit;
+            }
+            return;
+        }
+        $rootHtml = __DIR__ . '/../../index.html';
+        if (file_exists($rootHtml)) {
+            if (!headers_sent()) {
+                header('Content-Type: text/html; charset=utf-8');
+            }
+            readfile($rootHtml);
+            if (\Ciptaone\Core\Response::$exitOnSend) {
+                exit;
+            }
+            return;
+        }
+        if (!headers_sent()) {
+            header('Location: /docs');
+        }
+        if (\Ciptaone\Core\Response::$exitOnSend) {
             exit;
         }
-        header('Location: /docs');
-        exit;
-    });
-    $router->get('/landing', function (\Ciptaone\Core\Request $request) {
-        $htmlFile = __DIR__ . '/../public/index.html';
-        if (file_exists($htmlFile)) {
-            header('Content-Type: text/html; charset=utf-8');
-            readfile($htmlFile);
-            exit;
-        }
-        header('Location: /');
-        exit;
-    });
-    $router->get('/dashboard', function (\Ciptaone\Core\Request $request) {
-        $htmlFile = __DIR__ . '/../public/index.html';
-        if (file_exists($htmlFile)) {
-            header('Content-Type: text/html; charset=utf-8');
-            readfile($htmlFile);
-            exit;
-        }
-        header('Location: /');
-        exit;
-    });
-    $router->get('/playground', function (\Ciptaone\Core\Request $request) {
-        $htmlFile = __DIR__ . '/../public/index.html';
-        if (file_exists($htmlFile)) {
-            header('Content-Type: text/html; charset=utf-8');
-            readfile($htmlFile);
-            exit;
-        }
-        header('Location: /');
-        exit;
-    });
+    };
+
+    $spaRoutes = ['/', '/landing', '/login', '/register', '/dashboard', '/playground', '/api-keys', '/topup', '/history'];
+    foreach ($spaRoutes as $spaRoute) {
+        $router->get($spaRoute, $spaHandler);
+    }
+
     $router->get('/admin', function (\Ciptaone\Core\Request $request) {
         header('Location: /admin.php');
         exit;

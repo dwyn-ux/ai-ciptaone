@@ -23,4 +23,5 @@ class ErrorCode
     public const CSRF_INVALID               = 'csrf_invalid';
     public const SERVICE_UNAVAILABLE        = 'service_unavailable';
     public const BUDGET_EXCEEDED            = 'budget_exceeded';
+    public const UPSTREAM_ERROR             = 'upstream_error';
 }

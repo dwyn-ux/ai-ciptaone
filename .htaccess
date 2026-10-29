@@ -37,7 +37,7 @@
     RewriteRule ^ - [L]
 
     # 7. Route client-side SPA routes (dashboard, playground, api-keys, topup, history, login, register, landing)
-    RewriteRule ^(dashboard|playground|api-keys|topup|history|login|register|landing)$ php-backend/public/index.php [QSA,L]
+    RewriteRule ^(dashboard|playground|api-keys|topup|history|login|register|landing)/?$ php-backend/public/index.php [QSA,L]
 
     # 8. Route root
     RewriteRule ^$ php-backend/public/index.php [QSA,L]

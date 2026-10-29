@@ -54,7 +54,7 @@ class DuitkuPaymentAdapter extends BasePaymentAdapter
                 'checkout_url' => $checkoutUrl,
                 'va_number' => $result['va_number'] ?? null,
                 'qr_url' => $result['qr_url'] ?? null,
-                'berlaku_sampai' => gmdate('Y-m-d H:i:s', $result['expired_time']),
+                'berlaku_sampai' => gmdate('Y-m-d H:i:s', (int)($result['expired_time'] ?? (time() + 3600))),
                 'keterangan' => 'Klik tombol Bayar Sekarang untuk menyelesaikan pembayaran melalui QRIS, Virtual Account (BCA, Mandiri, BRI, BNI, CIMB, Permata, dll), E-Wallet, atau Gerai Ritel. Transaksi otomatis aktif dalam hitungan detik.',
             ],
         ];

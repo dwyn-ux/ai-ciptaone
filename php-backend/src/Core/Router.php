@@ -79,7 +79,33 @@ class Router
                 }
             }
 
-            // 4. No matching route
+            // 4. Fallback for React SPA client-side routes (GET non-API requests)
+            if ($method === 'GET' && !str_starts_with($path, '/api/') && !str_starts_with($path, '/v1/')) {
+                $htmlFile = __DIR__ . '/../../public/index.html';
+                if (file_exists($htmlFile)) {
+                    if (!headers_sent()) {
+                        header('Content-Type: text/html; charset=utf-8');
+                    }
+                    readfile($htmlFile);
+                    if (Response::$exitOnSend) {
+                        exit;
+                    }
+                    return;
+                }
+                $rootHtml = __DIR__ . '/../../../../index.html';
+                if (file_exists($rootHtml)) {
+                    if (!headers_sent()) {
+                        header('Content-Type: text/html; charset=utf-8');
+                    }
+                    readfile($rootHtml);
+                    if (Response::$exitOnSend) {
+                        exit;
+                    }
+                    return;
+                }
+            }
+
+            // 5. No matching route
             throw new AppError(
                 ErrorCode::NOT_FOUND,
                 "Endpoint '{$method} {$path}' tidak ditemukan.",

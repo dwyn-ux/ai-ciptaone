@@ -159,8 +159,9 @@ class DuitkuService
 
         $statusCode = (string)($response['statusCode'] ?? '');
         if ($statusCode !== '00') {
-            $msg = (string)($response['statusMessage'] ?? 'Gagal membuat transaksi di Duitku.');
-            throw new AppError(ErrorCode::UPSTREAM_ERROR, "Duitku Error [{$statusCode}]: {$msg}", 502);
+            $msg = (string)($response['statusMessage'] ?? ($response['Message'] ?? ($response['message'] ?? 'Gagal membuat transaksi di Duitku.')));
+            $prefix = $statusCode !== '' ? "[{$statusCode}] " : '';
+            throw new AppError(ErrorCode::UPSTREAM_ERROR, "Duitku Error: {$prefix}{$msg}", 502);
         }
 
         $paymentUrl = (string)($response['paymentUrl'] ?? '');
