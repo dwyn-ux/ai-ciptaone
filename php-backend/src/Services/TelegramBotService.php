@@ -387,8 +387,12 @@ class TelegramBotService
 
         // ==========================================
         // DEDICATED REPORT BOT HANDLERS (Admin Only)
+        // Only active if explicitly targeting the dedicated report bot AND sender is an authorized admin
         // ==========================================
-        if ($botRole === 'report') {
+        $adminIds = $this->config->getTelegramAdminIds();
+        $isAdmin = in_array($telegramUserId, $adminIds, false);
+
+        if ($botRole === 'report' && $isAdmin) {
             switch ($command) {
                 case '/start':
                     $welcome = "📊 *Halo, Administrator!*\n\n" .

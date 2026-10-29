@@ -82,10 +82,9 @@ if (empty($botToken)) {
 
 // 2. Bot Laporan / Admin (TELEGRAM_REPORT_BOT_TOKEN)
 echo "[2] Bot Laporan / Admin (TELEGRAM_REPORT_BOT_TOKEN):\n";
-$targetReportToken = !empty($reportBotToken) ? $reportBotToken : $botToken;
-
-if (empty($targetReportToken)) {
-    echo "    ⚠️ TELEGRAM_REPORT_BOT_TOKEN (dan TELEGRAM_BOT_TOKEN) kosong di .env. Dilewati.\n\n";
+if (empty($reportBotToken) || $reportBotToken === $botToken) {
+    echo "    ℹ️ Bot Laporan terpisah tidak dikonfigurasi (TELEGRAM_REPORT_BOT_TOKEN kosong atau sama dengan Bot 1).\n";
+    echo "       Bot 1 berfungsi ganda: melayani menu pelanggan (/start, /beli), dan laporan admin jika admin mengetik /laporan.\n\n";
 } else {
     $webhookUrl = "https://ai.ciptaone.site/api/v1/webhooks/telegram-report";
     $params = [
@@ -96,7 +95,7 @@ if (empty($targetReportToken)) {
         $params['secret_token'] = $reportWebhookSecret;
     }
 
-    $res = callTelegramApi($targetReportToken, 'setWebhook', $params);
+    $res = callTelegramApi($reportBotToken, 'setWebhook', $params);
     if (!empty($res['ok'])) {
         echo "    ✅ Webhook Laporan BERHASIL didaftarkan!\n";
         echo "       Target URL: {$webhookUrl}\n";
@@ -104,7 +103,7 @@ if (empty($targetReportToken)) {
         echo "    ❌ Gagal mendaftarkan webhook: " . ($res['description'] ?? json_encode($res)) . "\n";
     }
 
-    $info = callTelegramApi($targetReportToken, 'getWebhookInfo');
+    $info = callTelegramApi($reportBotToken, 'getWebhookInfo');
     if (!empty($info['ok'])) {
         echo "       Status URL aktif: " . ($info['result']['url'] ?? '-') . "\n";
         echo "       Pending updates : " . ($info['result']['pending_update_count'] ?? 0) . "\n";

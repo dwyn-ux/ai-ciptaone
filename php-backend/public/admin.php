@@ -356,7 +356,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action !== 'admin_login') {
             $res = json_decode((string)$resRaw, true);
 
             if (!empty($res['ok'])) {
-                $message = "✅ Webhook Telegram BERHASIL Didaftarkan ke {$webhookUrl}! Bot kini aktif mendengarkan perintah /start dan pilihan paket saldo.";
+                // If distinct report bot token is configured, also register report bot to telegram-report
+                $reportToken = trim((string)$config->get('TELEGRAM_REPORT_BOT_TOKEN', ''));
+                if ($reportToken !== '' && $reportToken !== $token) {
+                    $reportWebhookUrl = "{$scheme}://{$host}/api/v1/webhooks/telegram-report";
+                    $reportSecret = trim((string)$config->get('TELEGRAM_REPORT_WEBHOOK_SECRET', $secret));
+                    $reportPayload = [
+                        'url' => $reportWebhookUrl,
+                        'allowed_updates' => ['message', 'callback_query'],
+                        'drop_pending_updates' => false,
+                    ];
+                    if ($reportSecret !== '') {
+                        $reportPayload['secret_token'] = $reportSecret;
+                    }
+
+                    $ch2 = curl_init("https://api.telegram.org/bot{$reportToken}/setWebhook");
+                    curl_setopt_array($ch2, [
+                        CURLOPT_POST => true,
+                        CURLOPT_POSTFIELDS => json_encode($reportPayload),
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                        CURLOPT_TIMEOUT => 15,
+                        CURLOPT_SSL_VERIFYPEER => true,
+                    ]);
+                    curl_exec($ch2);
+                    curl_close($ch2);
+                    $message = "✅ Webhook Bot Pelanggan & Bot Laporan BERHASIL Didaftarkan secara terpisah!";
+                } else {
+                    $message = "✅ Webhook Bot Pelanggan BERHASIL Didaftarkan ke {$webhookUrl}! Bot kini aktif melayani /start dan paket saldo pembeli.";
+                }
                 $messageType = 'success';
             } else {
                 $err = $res['description'] ?? 'Gagal menghubungi Telegram API';
