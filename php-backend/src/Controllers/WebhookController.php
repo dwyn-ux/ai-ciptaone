@@ -128,6 +128,17 @@ class WebhookController extends BaseController
 
                     // Push instant fulfillment to Telegram customer
                     $this->notifyCustomerPaymentSuccess($orderId, (int)($verifiedData['amount'] ?? 0));
+
+                    // Push instant alert to Telegram admin
+                    try {
+                        $topupUser = $this->db->fetchOne(
+                            'SELECT u.email_normalized FROM topups t JOIN users u ON t.user_id = u.id WHERE t.order_id = ?',
+                            [$orderId]
+                        );
+                        $userEmail = (string)($topupUser['email_normalized'] ?? 'user');
+                        $this->telegramBot->notifyAdminPaymentReceived($orderId, $userEmail, (int)($verifiedData['amount'] ?? 0), 'tripay_qris');
+                    } catch (\Throwable) {
+                    }
                 }
             } catch (\Throwable $ex) {
                 $this->db->execute(
@@ -162,6 +173,17 @@ class WebhookController extends BaseController
 
                     // Push instant fulfillment to Telegram customer
                     $this->notifyCustomerPaymentSuccess($orderId, (int)($verifiedData['amount'] ?? 0));
+
+                    // Push instant alert to Telegram admin
+                    try {
+                        $topupUser = $this->db->fetchOne(
+                            'SELECT u.email_normalized FROM topups t JOIN users u ON t.user_id = u.id WHERE t.order_id = ?',
+                            [$orderId]
+                        );
+                        $userEmail = (string)($topupUser['email_normalized'] ?? 'user');
+                        $this->telegramBot->notifyAdminPaymentReceived($orderId, $userEmail, (int)($verifiedData['amount'] ?? 0), 'duitku');
+                    } catch (\Throwable) {
+                    }
                 }
             } catch (\Throwable $ex) {
                 $this->db->execute(

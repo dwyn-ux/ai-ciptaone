@@ -41,10 +41,10 @@ class TripayPaymentAdapter extends BasePaymentAdapter
         );
 
         return [
-            'checkout_url' => $result['checkout_url'] ?: $result['qr_url'],
-            'qr_url' => $result['qr_url'],
-            'qr_string' => $result['qr_string'],
-            'provider_reference' => $result['reference'],
+            'checkout_url' => $result['checkout_url'] ?? ($result['qr_url'] ?? null),
+            'qr_url' => $result['qr_url'] ?? null,
+            'qr_string' => $result['qr_string'] ?? null,
+            'provider_reference' => $result['reference'] ?? $orderId,
             'instructions' => [
                 'metode' => 'QRIS Dinamis (Tripay)',
                 'nominal' => $amountMinor,

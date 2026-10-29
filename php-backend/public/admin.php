@@ -456,13 +456,7 @@ $activeTab = $_GET['tab'] ?? 'settings';
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
-                <span>Review Top-up</span>
-                <?php 
-                    $pendingCount = count(array_filter($topups, fn($t) => $t['status'] === 'pending' || $t['status'] === 'under_review')); 
-                    if ($pendingCount > 0):
-                ?>
-                    <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-500 text-white font-bold"><?php echo $pendingCount; ?></span>
-                <?php endif; ?>
+                <span>Transaksi Top-up</span>
             </a>
 
             <a href="?tab=users" class="pb-3 px-3 flex items-center space-x-2 transition whitespace-nowrap border-b-2 <?php echo $activeTab === 'users' ? 'border-indigo-500 text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-200'; ?>">
@@ -693,16 +687,16 @@ $activeTab = $_GET['tab'] ?? 'settings';
                             </div>
                         </div>
 
-                        <!-- Telegram Bot -->
+                        <!-- Telegram Bot (Analytics & Alert) -->
                         <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3">
                             <div class="flex items-center justify-between">
-                                <span class="font-bold text-xs text-white">Bot Telegram Admin & Notifier</span>
+                                <span class="font-bold text-xs text-white">Bot Telegram Analitik & Laporan</span>
                                 <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold <?php echo $telegramToken ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
                                     <span class="w-1.5 h-1.5 rounded-full <?php echo $telegramToken ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
                                     <span><?php echo $telegramToken ? 'Terkonfigurasi' : 'Belum Diisi'; ?></span>
                                 </span>
                             </div>
-                            <p class="text-[11px] text-slate-400">Mengirimkan notifikasi invoice top-up & tombol persetujuan admin via Telegram pribadi.</p>
+                            <p class="text-[11px] text-slate-400">Laporan analitik harian, mingguan, & bulanan (user baru, uang masuk, token keluar, sisa saldo) & notifikasi instan pembayaran via Telegram.</p>
                             <div class="space-y-1 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
                                 <div class="flex justify-between">
                                     <span class="text-slate-500">TELEGRAM_BOT_TOKEN:</span>
@@ -712,6 +706,11 @@ $activeTab = $_GET['tab'] ?? 'settings';
                                     <span class="text-slate-500">TELEGRAM_ADMIN_IDS:</span>
                                     <span class="text-white"><?php echo $telegramAdmins ? htmlspecialchars($telegramAdmins) : '<span class="text-slate-600">kosong</span>'; ?></span>
                                 </div>
+                            </div>
+                            <div class="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-[10px] space-y-0.5">
+                                <span class="text-slate-400 font-sans block">Perintah Telegram Tersedia:</span>
+                                <code class="text-indigo-400 font-mono block">/laporan /laporan_harian /laporan_mingguan /laporan_bulanan</code>
+                                <span class="text-slate-500 block text-[9px] mt-0.5">Jadwalkan cron: <code class="text-slate-400">php send_report.php daily</code></span>
                             </div>
                         </div>
                     </div>
@@ -928,6 +927,8 @@ $activeTab = $_GET['tab'] ?? 'settings';
         <!-- ========================================== -->
         <!-- TAB 3: TOP-UPS                             -->
         <!-- ========================================== -->
+        <!-- TAB 3: TRANSAKSI TOP-UP                    -->
+        <!-- ========================================== -->
         <?php elseif ($activeTab === 'topups'): ?>
             <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
                 <table class="w-full text-left text-xs">
@@ -935,12 +936,12 @@ $activeTab = $_GET['tab'] ?? 'settings';
                         <tr>
                             <th class="px-6 py-4">Order ID</th>
                             <th class="px-6 py-4">Pengguna</th>
-                            <th class="px-6 py-4">Metode</th>
+                            <th class="px-6 py-4">Metode / Gateway</th>
                             <th class="px-6 py-4">Nominal</th>
                             <th class="px-6 py-4">Kredit</th>
                             <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Bukti Transfer</th>
-                            <th class="px-6 py-4 text-right">Tindakan</th>
+                            <th class="px-6 py-4">Waktu Dibuat</th>
+                            <th class="px-6 py-4 text-right">Waktu Lunas</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800/80">
@@ -959,49 +960,14 @@ $activeTab = $_GET['tab'] ?? 'settings';
                                     <td class="px-6 py-4">
                                         <span class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase <?php echo $t['status'] === 'paid' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : ($t['status'] === 'rejected' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'); ?>">
                                             <span class="w-1.5 h-1.5 rounded-full <?php echo $t['status'] === 'paid' ? 'bg-emerald-400' : ($t['status'] === 'rejected' ? 'bg-rose-400' : 'bg-amber-400'); ?>"></span>
-                                            <span><?php echo htmlspecialchars($t['status']); ?></span>
+                                            <span><?php echo $t['status'] === 'paid' ? 'LUNAS (OTOMATIS)' : htmlspecialchars($t['status']); ?></span>
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <?php if (!empty($t['proof_file_key'])): ?>
-                                            <a href="/api/v1/admin/topups/<?php echo urlencode($t['order_id']); ?>/proof" target="_blank" class="inline-flex items-center space-x-1 text-indigo-400 hover:text-indigo-300 font-semibold underline">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                <span>Buka Bukti</span>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-slate-600">-</span>
-                                        <?php endif; ?>
+                                    <td class="px-6 py-4 text-slate-400 text-[11px] font-mono">
+                                        <?php echo date('d M Y, H:i', strtotime($t['created_at'])); ?>
                                     </td>
-                                    <td class="px-6 py-4 text-right space-x-2">
-                                        <?php if ($t['status'] !== 'paid' && $t['status'] !== 'rejected'): ?>
-                                            <form method="POST" class="inline">
-                                                <input type="hidden" name="admin_action" value="review_topup">
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
-                                                <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($t['order_id']); ?>">
-                                                <input type="hidden" name="decision" value="paid">
-                                                <button type="submit" class="inline-flex items-center space-x-1 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 font-semibold rounded-lg transition">
-                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    <span>Setujui</span>
-                                                </button>
-                                            </form>
-                                            <form method="POST" class="inline">
-                                                <input type="hidden" name="admin_action" value="review_topup">
-                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
-                                                <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($t['order_id']); ?>">
-                                                <input type="hidden" name="decision" value="rejected">
-                                                <button type="submit" class="inline-flex items-center space-x-1 px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 font-semibold rounded-lg transition">
-                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                    <span>Tolak</span>
-                                                </button>
-                                            </form>
-                                        <?php endif; ?>
+                                    <td class="px-6 py-4 text-right text-slate-400 text-[11px] font-mono">
+                                        <?php echo !empty($t['paid_at']) ? date('d M Y, H:i', strtotime($t['paid_at'])) : '<span class="text-slate-600">-</span>'; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

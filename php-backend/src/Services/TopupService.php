@@ -56,11 +56,14 @@ class TopupService
     public function getAdapter(string $paymentMethod): BasePaymentAdapter
     {
         return match ($paymentMethod) {
-            'manual_transfer' => $this->manualTransferAdapter,
-            'manual_qris' => $this->manualQrisAdapter,
-            'dana_qris_dynamic' => $this->danaAdapter,
             'tripay_qris' => $this->tripayAdapter,
             'duitku', 'duitku_qris' => $this->duitkuAdapter,
+            'dana_qris_dynamic' => $this->danaAdapter,
+            'manual_transfer', 'manual_qris' => throw new AppError(
+                ErrorCode::INVALID_REQUEST,
+                "Metode pembayaran manual ('{$paymentMethod}') telah dinonaktifkan. Silakan gunakan pembayaran otomatis QRIS atau Virtual Account.",
+                400
+            ),
             default => throw new AppError(
                 ErrorCode::INVALID_REQUEST,
                 "Metode pembayaran '{$paymentMethod}' tidak valid.",
@@ -73,7 +76,7 @@ class TopupService
         string $userId,
         string $userEmail,
         int $amountMinor,
-        string $paymentMethod = 'manual_transfer'
+        string $paymentMethod = 'duitku'
     ): array {
         if ($amountMinor < 10000) {
             throw new AppError(
@@ -118,19 +121,6 @@ class TopupService
                 $idempotencyKey, $expiresIso, $nowIso, $nowIso
             ]
         );
-
-        // Notify admin via Telegram Bot (ignore failures to avoid blocking response)
-        try {
-            $this->telegramBot->notifyAdminNewTopup(
-                $orderId,
-                $userEmail,
-                $amountMinor,
-                $creditsToGrant,
-                $paymentMethod,
-                false
-            );
-        } catch (\Throwable) {
-        }
 
         return [
             'topup_id' => $topupId,
@@ -184,95 +174,11 @@ class TopupService
         string $contentType,
         string $fileBytes
     ): array {
-        $topup = $this->getTopupByIdOrOrder($orderId, $userId);
-
-        if (!in_array($topup['status'], ['pending', 'under_review'], true)) {
-            throw new AppError(
-                ErrorCode::INVALID_REQUEST,
-                "Tidak dapat mengunggah bukti: status invoice saat ini adalah '{$topup['status']}'.",
-                400
-            );
-        }
-
-        $maxBytes = (int)$this->config->get('MAX_PROOF_SIZE_BYTES', 5242880);
-        if (strlen($fileBytes) > $maxBytes) {
-            $maxMb = intdiv($maxBytes, 1024 * 1024);
-            throw new AppError(
-                ErrorCode::INVALID_REQUEST,
-                "Ukuran file bukti melebihi batas {$maxMb}MB.",
-                400
-            );
-        }
-
-        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
-        $cleanMime = strtolower(trim($contentType));
-
-        // Magic bytes inspection to prevent MIME spoofing
-        if (class_exists('\finfo')) {
-            $finfo = new \finfo(FILEINFO_MIME_TYPE);
-            $detected = $finfo->buffer($fileBytes);
-            if ($detected !== false && !in_array($detected, $allowedMimes, true)) {
-                throw new AppError(
-                    ErrorCode::INVALID_REQUEST,
-                    'Format file tidak valid. Hanya file gambar asli (JPEG, PNG, WEBP) yang diizinkan.',
-                    400
-                );
-            }
-            if ($detected !== false) {
-                $cleanMime = $detected;
-            }
-        }
-
-        if (!in_array($cleanMime, $allowedMimes, true)) {
-            throw new AppError(
-                ErrorCode::INVALID_REQUEST,
-                'Tipe file bukti harus berformat JPEG, PNG, atau WEBP.',
-                400
-            );
-        }
-
-        $ext = match ($cleanMime) {
-            'image/png' => '.png',
-            'image/webp' => '.webp',
-            default => '.jpg',
-        };
-
-        $proofKey = 'proof_' . bin2hex(random_bytes(16)) . $ext;
-        $uploadDir = (string)$this->config->get('PROOF_UPLOAD_DIR');
-
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
-        $destPath = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $proofKey;
-        file_put_contents($destPath, $fileBytes);
-
-        $nowIso = gmdate('Y-m-d H:i:s');
-        $this->db->execute(
-            "UPDATE topups SET proof_file_key = ?, status = 'under_review', updated_at = ? WHERE order_id = ?",
-            [$proofKey, $nowIso, $orderId]
+        throw new AppError(
+            ErrorCode::INVALID_REQUEST,
+            'Metode pembayaran manual dan unggah bukti telah dinonaktifkan. Seluruh transaksi diverifikasi secara otomatis oleh sistem payment gateway.',
+            400
         );
-
-        // Notify admins via Telegram
-        $userRow = $this->db->fetchOne('SELECT email_normalized FROM users WHERE id = ?', [$userId]);
-        $userEmail = $userRow['email_normalized'] ?? 'user';
-        try {
-            $this->telegramBot->notifyAdminNewTopup(
-                $orderId,
-                $userEmail,
-                $topup['amount_minor'],
-                $topup['credits_to_grant'],
-                $topup['payment_method'],
-                true
-            );
-        } catch (\Throwable) {
-        }
-
-        return [
-            'success' => true,
-            'status' => 'under_review',
-            'message' => 'Bukti pembayaran berhasil diunggah. Admin akan memverifikasi mutasi rekening.',
-        ];
     }
 
     public function reviewTopup(

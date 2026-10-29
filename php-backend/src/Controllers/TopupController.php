@@ -39,7 +39,7 @@ class TopupController extends BaseController
 
         $body = $request->getBody();
         $amountMinor = (int)($body['amount_minor'] ?? 0);
-        $paymentMethod = (string)($body['payment_method'] ?? 'manual_transfer');
+        $paymentMethod = (string)($body['payment_method'] ?? 'duitku');
 
         $res = $this->topupService->createTopup(
             $user['id'],

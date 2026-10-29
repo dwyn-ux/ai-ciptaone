@@ -29,7 +29,46 @@ class TelegramBotService
     }
 
     /**
-     * Send notification to admin IDs when a new manual top-up requires review.
+     * Send instant notification to admin IDs when an automated top-up is completed.
+     * Pure informational notification (no manual verification buttons).
+     */
+    public function notifyAdminPaymentReceived(
+        string $orderId,
+        string $userEmail,
+        int $amountMinor,
+        string $gateway
+    ): void {
+        $adminIds = $this->config->getTelegramAdminIds();
+        if ($this->baseUrl === null || empty($adminIds)) {
+            return;
+        }
+
+        $formattedAmount = number_format($amountMinor, 0, ',', '.');
+        $dateStr = gmdate('d M Y, H:i') . ' UTC';
+        $gatewayLabel = match (strtolower($gateway)) {
+            'tripay', 'tripay_qris' => 'Tripay (Dynamic QRIS)',
+            'duitku', 'duitku_qris' => 'Duitku (QRIS / VA Bank)',
+            default => strtoupper($gateway),
+        };
+
+        $text = "💰 *UANG MASUK OTOMATIS!*\n" .
+                "━━━━━━━━━━━━━━━━━━━━\n" .
+                "• *Order ID:* `{$orderId}`\n" .
+                "• *Nominal:* *Rp{$formattedAmount}*\n" .
+                "• *Kredit:* *+{$formattedAmount} kredit*\n" .
+                "• *Gateway:* {$gatewayLabel}\n" .
+                "• *Pengguna:* `{$userEmail}`\n" .
+                "• *Waktu:* {$dateStr}\n" .
+                "━━━━━━━━━━━━━━━━━━━━\n" .
+                "✅ _Saldo otomatis masuk ke akun pengguna tanpa perlu verifikasi manual._";
+
+        foreach ($adminIds as $adminId) {
+            $this->sendMessage($adminId, $text);
+        }
+    }
+
+    /**
+     * Backward-compatible stub: manual review is deprecated in favor of automated reports.
      */
     public function notifyAdminNewTopup(
         string $orderId,
@@ -39,44 +78,186 @@ class TelegramBotService
         string $paymentMethod,
         bool $hasProof = false
     ): void {
+        // Direct to informational notification
+        $this->notifyAdminPaymentReceived($orderId, $userEmail, $amountMinor, $paymentMethod);
+    }
+
+    /**
+     * Inline keyboard markup for Telegram report menu.
+     */
+    public function getReportMenuMarkup(): array
+    {
+        return [
+            'inline_keyboard' => [
+                [
+                    ['text' => '📅 Laporan Harian (24 Jam)', 'callback_data' => 'report:daily'],
+                    ['text' => '📆 Mingguan (7 Hari)', 'callback_data' => 'report:weekly'],
+                ],
+                [
+                    ['text' => '📊 Bulanan (30 Hari)', 'callback_data' => 'report:monthly'],
+                    ['text' => '💰 Ringkasan All-Time', 'callback_data' => 'report:all_time'],
+                ]
+            ]
+        ];
+    }
+
+    /**
+     * Generate structured analytics & financial report for a given timeframe.
+     * Periods: 'daily' (24 jam), 'weekly' (7 hari), 'monthly' (30 hari), 'all_time' (seluruh waktu)
+     */
+    public function generateReport(string $period, Database $db): string
+    {
+        $now = time();
+        $periodLabel = match ($period) {
+            'weekly' => 'MINGGUAN (7 Hari Terakhir)',
+            'monthly' => 'BULANAN (30 Hari Terakhir)',
+            'all_time' => 'SELURUH WAKTU (All-Time)',
+            default => 'HARIAN (24 Jam Terakhir)',
+        };
+
+        $secondsAgo = match ($period) {
+            'weekly' => 7 * 86400,
+            'monthly' => 30 * 86400,
+            'all_time' => 365 * 10 * 86400,
+            default => 86400,
+        };
+
+        $sinceIso = gmdate('Y-m-d H:i:s', $now - $secondsAgo);
+        $currentDateStr = gmdate('d M Y, H:i') . ' UTC';
+
+        // 1. Penambahan Pengguna Baru
+        $newUsersRow = $db->fetchOne('SELECT COUNT(*) as total FROM users WHERE created_at >= ?', [$sinceIso]);
+        $newUsersCount = (int)($newUsersRow['total'] ?? 0);
+
+        $totalUsersRow = $db->fetchOne('SELECT COUNT(*) as total FROM users');
+        $totalUsersCount = (int)($totalUsersRow['total'] ?? 0);
+
+        // 2. Uang Masuk (Gross Revenue) dari Pembayaran Lunas
+        $revRow = $db->fetchOne(
+            "SELECT COALESCE(SUM(amount_minor), 0) as total_revenue, COUNT(*) as total_tx
+             FROM topups
+             WHERE status = 'paid' AND (paid_at >= ? OR updated_at >= ?)",
+            [$sinceIso, $sinceIso]
+        );
+        $totalRevenue = (int)($revRow['total_revenue'] ?? 0);
+        $totalTxCount = (int)($revRow['total_tx'] ?? 0);
+
+        // Breakdown per gateway
+        $duitkuRow = $db->fetchOne(
+            "SELECT COALESCE(SUM(amount_minor), 0) as rev, COUNT(*) as count
+             FROM topups
+             WHERE status = 'paid' AND payment_method LIKE 'duitku%' AND (paid_at >= ? OR updated_at >= ?)",
+            [$sinceIso, $sinceIso]
+        );
+        $duitkuRev = (int)($duitkuRow['rev'] ?? 0);
+        $duitkuCount = (int)($duitkuRow['count'] ?? 0);
+
+        $tripayRow = $db->fetchOne(
+            "SELECT COALESCE(SUM(amount_minor), 0) as rev, COUNT(*) as count
+             FROM topups
+             WHERE status = 'paid' AND payment_method LIKE 'tripay%' AND (paid_at >= ? OR updated_at >= ?)",
+            [$sinceIso, $sinceIso]
+        );
+        $tripayRev = (int)($tripayRow['rev'] ?? 0);
+        $tripayCount = (int)($tripayRow['count'] ?? 0);
+
+        // 3. Token Keluar & Pemakaian AI
+        $usageRow = $db->fetchOne(
+            "SELECT 
+                COUNT(*) as total_req,
+                COALESCE(SUM(input_tokens), 0) as in_tokens,
+                COALESCE(SUM(output_tokens), 0) as out_tokens,
+                COALESCE(SUM(billed_credits), 0) as billed_credits
+             FROM usage_events
+             WHERE status = 'success' AND created_at >= ?",
+            [$sinceIso]
+        );
+        $totalReq = (int)($usageRow['total_req'] ?? 0);
+        $inTokens = (int)($usageRow['in_tokens'] ?? 0);
+        $outTokens = (int)($usageRow['out_tokens'] ?? 0);
+        $totalTokens = $inTokens + $outTokens;
+        $billedCredits = (int)($usageRow['billed_credits'] ?? 0);
+
+        // Top 3 model AI terpakai
+        $topModels = $db->fetchAll(
+            "SELECT m.public_id, COUNT(u.id) as req_count
+             FROM usage_events u
+             JOIN models m ON u.model_id = m.id
+             WHERE u.status = 'success' AND u.created_at >= ?
+             GROUP BY m.public_id
+             ORDER BY req_count DESC
+             LIMIT 3",
+            [$sinceIso]
+        );
+
+        $topModelsText = "";
+        if (!empty($topModels)) {
+            $rank = 1;
+            foreach ($topModels as $tm) {
+                $topModelsText .= "  {$rank}. `{$tm['public_id']}` (" . number_format((int)$tm['req_count'], 0, ',', '.') . " req)\n";
+                $rank++;
+            }
+        } else {
+            $topModelsText = "  _Belum ada request AI pada periode ini_\n";
+        }
+
+        // 4. Sisa Token & Saldo Mengendap
+        $walletRow = $db->fetchOne("SELECT COALESCE(SUM(balance_credits), 0) as total_balance FROM wallets");
+        $totalBalanceCredits = (int)($walletRow['total_balance'] ?? 0);
+
+        $activeWalletsRow = $db->fetchOne("SELECT COUNT(*) as count FROM wallets WHERE balance_credits > 0");
+        $activeWalletsCount = (int)($activeWalletsRow['count'] ?? 0);
+
+        // Format Teks Laporan
+        $fmtRevenue = number_format($totalRevenue, 0, ',', '.');
+        $fmtDuitkuRev = number_format($duitkuRev, 0, ',', '.');
+        $fmtTripayRev = number_format($tripayRev, 0, ',', '.');
+        $fmtInTokens = number_format($inTokens, 0, ',', '.');
+        $fmtOutTokens = number_format($outTokens, 0, ',', '.');
+        $fmtTotalTokens = number_format($totalTokens, 0, ',', '.');
+        $fmtBilledCredits = number_format($billedCredits, 0, ',', '.');
+        $fmtBalanceCredits = number_format($totalBalanceCredits, 0, ',', '.');
+
+        return "📊 *LAPORAN AI ROUTER ({$periodLabel})*\n" .
+               "🕒 *Dicatat pada:* {$currentDateStr}\n" .
+               "━━━━━━━━━━━━━━━━━━━━\n\n" .
+               "👥 *PENGGUNA & REGISTRASI*\n" .
+               "• Penambahan User Baru: *+" . number_format($newUsersCount, 0, ',', '.') . " pengguna*\n" .
+               "• Total Pengguna Terdaftar: *" . number_format($totalUsersCount, 0, ',', '.') . " akun*\n\n" .
+               "💰 *UANG MASUK (REVENUE)*\n" .
+               "• *Total Pemasukan:* *Rp{$fmtRevenue}*\n" .
+               "• Transaksi Berhasil: *{$totalTxCount} transaksi*\n" .
+               "• Duitku (VA & QRIS): Rp{$fmtDuitkuRev} ({$duitkuCount} tx)\n" .
+               "• Tripay (QRIS Dinamis): Rp{$fmtTripayRev} ({$tripayCount} tx)\n\n" .
+               "⚡ *TOKEN KELUAR & PEMAKAIAN AI*\n" .
+               "• Total Panggilan AI: *" . number_format($totalReq, 0, ',', '.') . " request*\n" .
+               "• Input Tokens: *{$fmtInTokens} token*\n" .
+               "• Output Tokens: *{$fmtOutTokens} token*\n" .
+               "• Total Token Terproses: *{$fmtTotalTokens} token*\n" .
+               "• Kredit Terpotong: *{$fmtBilledCredits} kredit (Rp{$fmtBilledCredits})*\n" .
+               "• Model Terpopuler:\n" . $topModelsText . "\n" .
+               "💼 *SISA TOKEN & SALDO PENGGUNA*\n" .
+               "• Total Sisa Saldo Kredit User: *{$fmtBalanceCredits} kredit*\n" .
+               "• Pengguna dengan Saldo Aktif: *{$activeWalletsCount} akun*\n" .
+               "━━━━━━━━━━━━━━━━━━━━\n" .
+               "🤖 _AI Ciptaone Router Analytics_";
+    }
+
+    /**
+     * Send periodic report to all registered admin Telegram IDs.
+     */
+    public function sendReportToAdmins(string $period, Database $db): void
+    {
         $adminIds = $this->config->getTelegramAdminIds();
         if ($this->baseUrl === null || empty($adminIds)) {
             return;
         }
 
-        $methodLabel = match ($paymentMethod) {
-            'manual_transfer' => 'Transfer Bank Manual',
-            'manual_qris' => 'QRIS Manual',
-            'tripay_qris' => 'QRIS Dinamis (Tripay)',
-            'duitku' => 'Duitku Full Service (QRIS & VA)',
-            'duitku_qris' => 'QRIS Dinamis (Duitku)',
-            default => $paymentMethod,
-        };
-
-        $formattedAmount = number_format($amountMinor, 0, ',', '.');
-        $formattedCredits = number_format($creditsToGrant, 0, ',', '.');
-        $proofStatus = $hasProof ? 'Sudah diunggah' : 'Belum diunggah';
-
-        $text = "🔔 *PERMINTAAN TOP-UP BARU*\n\n" .
-                "• *Order ID:* `{$orderId}`\n" .
-                "• *Pengguna:* `{$userEmail}`\n" .
-                "• *Nominal:* Rp{$formattedAmount}\n" .
-                "• *Kredit:* {$formattedCredits} kredit\n" .
-                "• *Metode:* {$methodLabel}\n" .
-                "• *Bukti Transfer:* {$proofStatus}\n\n" .
-                "⚠️ *Perhatian:* Pastikan dana benar-benar masuk pada mutasi rekening resmi.";
-
-        $replyMarkup = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '✅ Setujui', 'callback_data' => "topup:approve:{$orderId}"],
-                    ['text' => '❌ Tolak', 'callback_data' => "topup:reject:{$orderId}"],
-                ]
-            ]
-        ];
+        $reportText = $this->generateReport($period, $db);
+        $replyMarkup = $this->getReportMenuMarkup();
 
         foreach ($adminIds as $adminId) {
-            $this->sendMessage($adminId, $text, $replyMarkup);
+            $this->sendMessage($adminId, $reportText, $replyMarkup);
         }
     }
 
@@ -216,6 +397,62 @@ class TelegramBotService
                 $this->sendApiKeyMessage($chatId, (string)$user['id'], $username, $apiKeyService, $db);
                 return ['status' => 'handled', 'command' => '/key'];
 
+            case '/laporan':
+            case '/report':
+                $adminIds = $this->config->getTelegramAdminIds();
+                if (!in_array($telegramUserId, $adminIds, false)) {
+                    $this->sendMessage($chatId, '⛔ Akses ditolak: Menu laporan khusus administrator.');
+                    return ['status' => 'unauthorized'];
+                }
+                $menuText = "📊 *PUSAT ANALITIK & LAPORAN AI ROUTER*\n\n" .
+                            "Silakan pilih periode laporan yang ingin di-generate:";
+                $this->sendMessage($chatId, $menuText, $this->getReportMenuMarkup());
+                return ['status' => 'handled', 'command' => '/laporan'];
+
+            case '/laporan_harian':
+            case '/daily':
+                $adminIds = $this->config->getTelegramAdminIds();
+                if (!in_array($telegramUserId, $adminIds, false)) {
+                    $this->sendMessage($chatId, '⛔ Akses ditolak: Perintah khusus administrator.');
+                    return ['status' => 'unauthorized'];
+                }
+                $rep = $this->generateReport('daily', $db);
+                $this->sendMessage($chatId, $rep, $this->getReportMenuMarkup());
+                return ['status' => 'handled', 'command' => '/laporan_harian'];
+
+            case '/laporan_mingguan':
+            case '/weekly':
+                $adminIds = $this->config->getTelegramAdminIds();
+                if (!in_array($telegramUserId, $adminIds, false)) {
+                    $this->sendMessage($chatId, '⛔ Akses ditolak: Perintah khusus administrator.');
+                    return ['status' => 'unauthorized'];
+                }
+                $rep = $this->generateReport('weekly', $db);
+                $this->sendMessage($chatId, $rep, $this->getReportMenuMarkup());
+                return ['status' => 'handled', 'command' => '/laporan_mingguan'];
+
+            case '/laporan_bulanan':
+            case '/monthly':
+                $adminIds = $this->config->getTelegramAdminIds();
+                if (!in_array($telegramUserId, $adminIds, false)) {
+                    $this->sendMessage($chatId, '⛔ Akses ditolak: Perintah khusus administrator.');
+                    return ['status' => 'unauthorized'];
+                }
+                $rep = $this->generateReport('monthly', $db);
+                $this->sendMessage($chatId, $rep, $this->getReportMenuMarkup());
+                return ['status' => 'handled', 'command' => '/laporan_bulanan'];
+
+            case '/ringkasan':
+            case '/stats':
+                $adminIds = $this->config->getTelegramAdminIds();
+                if (!in_array($telegramUserId, $adminIds, false)) {
+                    $this->sendMessage($chatId, '⛔ Akses ditolak: Perintah khusus administrator.');
+                    return ['status' => 'unauthorized'];
+                }
+                $rep = $this->generateReport('all_time', $db);
+                $this->sendMessage($chatId, $rep, $this->getReportMenuMarkup());
+                return ['status' => 'handled', 'command' => '/ringkasan'];
+
             case '/help':
             default:
                 $helpText = "ℹ️ *PANDUAN PENGGUNAAN AI CIPTAONE*\n\n" .
@@ -277,20 +514,35 @@ class TelegramBotService
         // Auto-provision user account
         $user = $this->getOrCreateTelegramUser($telegramUserId, $username, $firstName, $db);
 
-        // 1. Admin top-up approval action (topup:approve:ORD / topup:reject:ORD)
+        // 1. Admin Analytics & Reporting Callbacks (report:daily, report:weekly, report:monthly, report:all_time)
+        if (str_starts_with($data, 'report:')) {
+            $adminIds = $this->config->getTelegramAdminIds();
+            if (!in_array($telegramUserId, $adminIds, false)) {
+                $this->answerCallback($callbackId, '⛔ Akses ditolak: Menu laporan khusus administrator.', true);
+                return ['status' => 'unauthorized'];
+            }
+
+            $period = substr($data, 7);
+            if (!in_array($period, ['daily', 'weekly', 'monthly', 'all_time'], true)) {
+                $period = 'daily';
+            }
+
+            $this->answerCallback($callbackId, '📊 Menyiapkan laporan...');
+            $reportText = $this->generateReport($period, $db);
+            if ($chatId !== null) {
+                $this->sendMessage($chatId, $reportText, $this->getReportMenuMarkup());
+            }
+            return ['status' => 'handled', 'report' => $period];
+        }
+
+        // 2. Manual top-up approval action deprecated
         if (str_starts_with($data, 'topup:')) {
-            return $this->handleAdminReviewCallback(
+            $this->answerCallback(
                 $callbackId,
-                $telegramUserId,
-                $username,
-                $data,
-                $message,
-                $chatId,
-                $messageId,
-                function (string $orderId, string $action, string $adminUserId, ?string $rejectionReason) use ($topupService) {
-                    return $topupService->reviewTopup($orderId, $action, $adminUserId, $rejectionReason);
-                }
+                'ℹ️ Verifikasi manual telah dinonaktifkan. Seluruh pembayaran diproses otomatis oleh payment gateway.',
+                true
             );
+            return ['status' => 'deprecated'];
         }
 
         // 2. Customer Menu Actions
@@ -500,54 +752,17 @@ class TelegramBotService
         callable $topupServiceFn
     ): array {
         $adminIds = $this->config->getTelegramAdminIds();
-        if (!in_array($telegramUserId, $adminIds, true)) {
+        if (!in_array($telegramUserId, $adminIds, false)) {
             $this->answerCallback($callbackId, '⛔ Akses ditolak: Anda bukan admin terdaftar.', true);
             return ['status' => 'forbidden'];
         }
 
-        $parts = explode(':', $data);
-        if (count($parts) !== 3 || $parts[0] !== 'topup') {
-            $this->answerCallback($callbackId, 'Format callback tidak valid.', false);
-            return ['status' => 'invalid_format'];
-        }
-
-        $action = $parts[1];
-        $orderId = $parts[2];
-
-        if (!in_array($action, ['approve', 'reject'], true)) {
-            $this->answerCallback($callbackId, 'Aksi tidak dikenal.', false);
-            return ['status' => 'unknown_action'];
-        }
-
-        $adminIdentifier = "tg_{$telegramUserId}_{$username}";
-        $statusToSet = $action === 'approve' ? 'paid' : 'rejected';
-        $rejectionReason = $action === 'reject' ? 'Ditolak oleh admin via Telegram' : null;
-
-        try {
-            $result = $topupServiceFn($orderId, $statusToSet, $adminIdentifier, $rejectionReason);
-
-            $respText = $action === 'approve'
-                ? "✅ Order {$orderId} berhasil DISETUJUI dan saldo dikreditkan."
-                : "❌ Order {$orderId} berhasil DITOLAK.";
-
-            $this->answerCallback($callbackId, $respText, true);
-
-            if ($chatId && $messageId) {
-                $origText = (string)($message['text'] ?? '');
-                $decisionBadge = $action === 'approve'
-                    ? "\n\n🏁 *STATUS:* DISETUJUI oleh @{$username}"
-                    : "\n\n🏁 *STATUS:* DITOLAK oleh @{$username}";
-                $this->editMessageText($chatId, (int)$messageId, $origText . $decisionBadge);
-            }
-
-            return ['status' => 'success', 'result' => $result];
-        } catch (AppError $ae) {
-            $this->answerCallback($callbackId, "Gagal: {$ae->getMessage()}", true);
-            return ['status' => 'error', 'error' => $ae->getMessage()];
-        } catch (\Throwable $ex) {
-            $this->answerCallback($callbackId, "Kesalahan sistem: {$ex->getMessage()}", true);
-            return ['status' => 'error', 'error' => $ex->getMessage()];
-        }
+        $this->answerCallback(
+            $callbackId,
+            'ℹ️ Verifikasi manual telah dinonaktifkan. Seluruh pembayaran diproses otomatis oleh payment gateway.',
+            true
+        );
+        return ['status' => 'deprecated', 'message' => 'Manual verification deprecated.'];
     }
 
     private function sendPackageSelectionMenu(int|string $chatId): void
