@@ -64,28 +64,40 @@ export const TopupPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (autoSelect = true) => {
     try {
       const list = await apiFetch<TopupItem[]>("/api/v1/topups");
       setHistory(list);
-      // Auto-select pending topup if any
-      const pending = list.find((t) => t.status === "pending");
-      if (pending && !activeInvoice) {
-        const fullDetails = await apiFetch<any>(`/api/v1/topups/${pending.order_id}`);
-        setActiveInvoice({
-          topup_id: fullDetails.id,
-          order_id: fullDetails.order_id,
-          amount_minor: fullDetails.amount_minor,
-          currency: fullDetails.currency,
-          credits_to_grant: fullDetails.credits_to_grant,
-          payment_method: fullDetails.payment_method,
-          status: fullDetails.status,
-          expires_at: fullDetails.expires_at,
-          checkout_url: fullDetails.checkout_url,
-          qr_url: fullDetails.qr_url,
-          qr_string: fullDetails.qr_string,
-          instructions: fullDetails.instructions || {},
-        });
+      // Auto-select pending topup on initial load if no invoice is currently displayed
+      if (autoSelect) {
+        const pending = list.find((t) => t.status === "pending");
+        if (pending) {
+          setActiveInvoice((current) => {
+            if (current) return current;
+            apiFetch<any>(`/api/v1/topups/${pending.order_id}`)
+              .then((fullDetails) => {
+                setActiveInvoice((curr) => {
+                  if (curr) return curr;
+                  return {
+                    topup_id: fullDetails.id,
+                    order_id: fullDetails.order_id,
+                    amount_minor: fullDetails.amount_minor,
+                    currency: fullDetails.currency,
+                    credits_to_grant: fullDetails.credits_to_grant,
+                    payment_method: fullDetails.payment_method,
+                    status: fullDetails.status,
+                    expires_at: fullDetails.expires_at,
+                    checkout_url: fullDetails.checkout_url,
+                    qr_url: fullDetails.qr_url,
+                    qr_string: fullDetails.qr_string,
+                    instructions: fullDetails.instructions || {},
+                  };
+                });
+              })
+              .catch(console.error);
+            return null;
+          });
+        }
       }
     } catch (e) {
       console.error(e);
@@ -93,7 +105,7 @@ export const TopupPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchHistory();
+    fetchHistory(true);
   }, []);
 
   const handleCreateTopup = async (e: React.FormEvent) => {
@@ -118,7 +130,7 @@ export const TopupPage: React.FC = () => {
       });
       setActiveInvoice(res);
       setSuccessMsg("Tagihan berhasil dibuat! Silakan selesaikan pembayaran otomatis di bawah.");
-      await fetchHistory();
+      await fetchHistory(false);
     } catch (err: any) {
       setErrorMsg(err.message || "Gagal membuat tagihan top-up.");
     } finally {
@@ -229,29 +241,31 @@ export const TopupPage: React.FC = () => {
               </div>
 
               {/* Online Payment Link (Duitku) */}
-              {activeInvoice.checkout_url && activeInvoice.status !== "paid" && (
-                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-                      Pembayaran Otomatis Duitku
-                    </span>
-                    <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                      Verifikasi Seketika 24/7
-                    </span>
+              {activeInvoice.checkout_url &&
+                activeInvoice.checkout_url !== activeInvoice.qr_url &&
+                activeInvoice.status !== "paid" && (
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                        Pembayaran Otomatis Duitku
+                      </span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                        Verifikasi Seketika 24/7
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-700 leading-relaxed">
+                      Klik tombol di bawah untuk membuka halaman pembayaran resmi Duitku. Anda dapat memilih <b>QRIS</b>, <b>Virtual Account</b> (BCA, Mandiri, BRI, BNI, Permata, CIMB), atau <b>E-Wallet</b>. Saldo kredit akan langsung masuk seketika setelah pembayaran.
+                    </p>
+                    <a
+                      href={activeInvoice.checkout_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition space-x-2"
+                    >
+                      <span>💳 Buka Halaman Pembayaran Duitku</span>
+                      <ExternalLink className="w-4 h-4 ml-1" />
+                    </a>
                   </div>
-                  <p className="text-xs text-emerald-700 leading-relaxed">
-                    Klik tombol di bawah untuk membuka halaman pembayaran resmi Duitku. Anda dapat memilih <b>QRIS</b>, <b>Virtual Account</b> (BCA, Mandiri, BRI, BNI, Permata, CIMB), atau <b>E-Wallet</b>. Saldo kredit akan langsung masuk seketika setelah pembayaran.
-                  </p>
-                  <a
-                    href={activeInvoice.checkout_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition space-x-2"
-                  >
-                    <span>💳 Buka Halaman Pembayaran Duitku</span>
-                    <ExternalLink className="w-4 h-4 ml-1" />
-                  </a>
-                </div>
               )}
 
               {/* QRIS Image if available */}
@@ -270,6 +284,35 @@ export const TopupPage: React.FC = () => {
                   <p className="text-xs text-slate-500">
                     Buka GoPay, OVO, ShopeePay, DANA, BCA Mobile, atau m-Banking Anda lalu pindai kode QR di atas.
                   </p>
+                </div>
+              )}
+
+              {/* Fallback if URL or QR is not yet rendered */}
+              {!activeInvoice.checkout_url && !activeInvoice.qr_url && activeInvoice.status !== "paid" && (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3 text-amber-900">
+                  <div className="flex items-center space-x-2 font-bold text-sm">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                    <span>Menghubungkan ke Saluran Pembayaran...</span>
+                  </div>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    Tautan pembayaran atau kode QRIS sedang diproses oleh gateway. Silakan klik tombol di bawah untuk memuat tautan atau buat tagihan baru.
+                  </p>
+                  <div className="flex items-center space-x-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleRefreshStatus}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+                    >
+                      🔄 Muat Ulang Tautan Pembayaran
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveInvoice(null)}
+                      className="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold shadow-sm transition"
+                    >
+                      ← Buat Tagihan Baru
+                    </button>
+                  </div>
                 </div>
               )}
 

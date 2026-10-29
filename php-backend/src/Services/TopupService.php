@@ -105,8 +105,19 @@ class TopupService
         $invoiceData = $adapter->createInvoice($orderId, $amountMinor, 'IDR', $userId, $userEmail);
 
         $checkoutUrl = $invoiceData['checkout_url'] ?? null;
+        $qrUrl = $invoiceData['qr_url'] ?? null;
+        $qrString = $invoiceData['qr_string'] ?? null;
         $providerRef = $invoiceData['provider_reference'] ?? $orderId;
         $instructions = $invoiceData['instructions'] ?? [];
+
+        // Store payment metadata (checkout_url, qr_url, instructions) in rejection_reason column
+        // while status is 'pending', so it persists across page reloads and status checks without schema changes.
+        $metadataJson = json_encode([
+            'checkout_url' => $checkoutUrl,
+            'qr_url' => $qrUrl,
+            'qr_string' => $qrString,
+            'instructions' => $instructions,
+        ], JSON_UNESCAPED_SLASHES);
 
         $this->db->execute(
             "INSERT INTO topups (
@@ -114,10 +125,11 @@ class TopupService
                 provider_reference, amount_minor, currency, credits_to_grant,
                 status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
                 idempotency_key, paid_at, expires_at, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, ?, ?, NULL, ?, ?, ?)",
             [
                 $topupId, $userId, $orderId, $paymentMethod, $paymentMethod,
                 $providerRef, $amountMinor, $creditsToGrant,
+                $metadataJson,
                 $idempotencyKey, $expiresIso, $nowIso, $nowIso
             ]
         );
@@ -132,8 +144,8 @@ class TopupService
             'status' => 'pending',
             'expires_at' => gmdate('Y-m-d\TH:i:s\Z', $expiresAt),
             'checkout_url' => $checkoutUrl,
-            'qr_url' => $invoiceData['qr_url'] ?? null,
-            'qr_string' => $invoiceData['qr_string'] ?? null,
+            'qr_url' => $qrUrl,
+            'qr_string' => $qrString,
             'instructions' => $instructions,
         ];
     }
@@ -164,6 +176,48 @@ class TopupService
         if (!empty($row['paid_at'])) {
             $row['paid_at'] = gmdate('Y-m-d\TH:i:s\Z', strtotime($row['paid_at']));
         }
+
+        // Unpack metadata if pending
+        if ($row['status'] === 'pending' && !empty($row['rejection_reason'])) {
+            $meta = json_decode((string)$row['rejection_reason'], true);
+            if (is_array($meta)) {
+                $row['checkout_url'] = $meta['checkout_url'] ?? null;
+                $row['qr_url'] = $meta['qr_url'] ?? null;
+                $row['qr_string'] = $meta['qr_string'] ?? null;
+                $row['instructions'] = $meta['instructions'] ?? [];
+            }
+        }
+
+        // Fallback for existing pending topups that don't have metadata stored
+        if ($row['status'] === 'pending' && empty($row['checkout_url']) && empty($row['qr_url'])) {
+            try {
+                $adapter = $this->getAdapter($row['payment_method']);
+                $invData = $adapter->createInvoice(
+                    $row['order_id'],
+                    $row['amount_minor'],
+                    $row['currency'] ?? 'IDR',
+                    $row['user_id'],
+                    'customer@ciptaone.com'
+                );
+                $row['checkout_url'] = $invData['checkout_url'] ?? null;
+                $row['qr_url'] = $invData['qr_url'] ?? null;
+                $row['qr_string'] = $invData['qr_string'] ?? null;
+                $row['instructions'] = $invData['instructions'] ?? [];
+
+                $metaJson = json_encode([
+                    'checkout_url' => $row['checkout_url'],
+                    'qr_url' => $row['qr_url'],
+                    'qr_string' => $row['qr_string'],
+                    'instructions' => $row['instructions'],
+                ], JSON_UNESCAPED_SLASHES);
+                $this->db->execute('UPDATE topups SET rejection_reason = ? WHERE id = ?', [$metaJson, $row['id']]);
+            } catch (\Throwable $e) {
+                $row['instructions'] = [
+                    'keterangan' => 'Silakan klik tombol Buat Tagihan Baru untuk membuat pesanan pembayaran otomatis.',
+                ];
+            }
+        }
+
         return $row;
     }
 
