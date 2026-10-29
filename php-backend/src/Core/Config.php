@@ -82,8 +82,8 @@ class Config
             'DUITKU_MERCHANT_CODE' => '',
             'DUITKU_API_KEY' => '',
             'DUITKU_MODE' => 'sandbox',
-            'DUITKU_CALLBACK_URL' => 'https://ciptaone.com/api/v1/webhooks/duitku',
-            'DUITKU_RETURN_URL' => 'https://ciptaone.com/dashboard',
+            'DUITKU_CALLBACK_URL' => 'https://ai.ciptaone.site/api/v1/webhooks/duitku',
+            'DUITKU_RETURN_URL' => 'https://ai.ciptaone.site/topup',
             'DUITKU_WEBHOOK_IP_WHITELIST' => '',
 
             // DANA (Deactivated by default until merchant verified)

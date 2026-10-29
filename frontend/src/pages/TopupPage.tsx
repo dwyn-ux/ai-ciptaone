@@ -105,7 +105,40 @@ export const TopupPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchHistory(true);
+    // Check if returning from Duitku or payment gateway redirect (merchantOrderId in query parameters)
+    const searchParams = new URLSearchParams(window.location.search);
+    const returnOrderId = searchParams.get("merchantOrderId") || searchParams.get("order_id");
+    const resultCode = searchParams.get("resultCode");
+
+    if (returnOrderId) {
+      apiFetch<any>(`/api/v1/topups/${returnOrderId}`)
+        .then(async (details) => {
+          setActiveInvoice({
+            topup_id: details.id,
+            order_id: details.order_id,
+            amount_minor: details.amount_minor,
+            currency: details.currency,
+            credits_to_grant: details.credits_to_grant,
+            payment_method: details.payment_method,
+            status: details.status,
+            expires_at: details.expires_at,
+            checkout_url: details.checkout_url,
+            qr_url: details.qr_url,
+            qr_string: details.qr_string,
+            instructions: details.instructions || {},
+          });
+          if (details.status === "paid" || resultCode === "00") {
+            setSuccessMsg("🎉 Pembayaran Anda telah BERHASIL diverifikasi! Saldo telah bertambah.");
+            await refreshWallet();
+          }
+        })
+        .catch(console.error)
+        .finally(() => {
+          fetchHistory(false);
+        });
+    } else {
+      fetchHistory(true);
+    }
   }, []);
 
   const handleCreateTopup = async (e: React.FormEvent) => {

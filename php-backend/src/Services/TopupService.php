@@ -150,7 +150,7 @@ class TopupService
         ];
     }
 
-    public function getTopupByIdOrOrder(string $identifier, ?string $userId = null): array
+    public function getTopupByIdOrOrder(string $identifier, ?string $userId = null, bool $pollGateway = true): array
     {
         $sql = 'SELECT * FROM topups WHERE (id = ? OR order_id = ?)';
         $params = [$identifier, $identifier];
@@ -167,6 +167,29 @@ class TopupService
                 'Invoice top-up tidak ditemukan.',
                 404
             );
+        }
+
+        // Live Gateway Status Verification for pending invoices:
+        // Check live with Duitku in case webhook was delayed, missed, or blocked by sandbox networking.
+        if ($pollGateway && $row['status'] === 'pending' && in_array($row['payment_method'], ['duitku', 'duitku_qris'], true)) {
+            $duitku = $this->duitkuAdapter->getDuitkuService();
+            if ($duitku->isConfigured()) {
+                try {
+                    $statusRes = $duitku->checkTransactionStatus($row['order_id']);
+                    $statusCode = (string)($statusRes['statusCode'] ?? '');
+                    // Duitku statusCode '00' indicates SUCCESS / PAID
+                    if ($statusCode === '00') {
+                        $this->reviewTopup($row['order_id'], 'paid', 'gateway:duitku:status_poll');
+                        $row = $this->db->fetchOne($sql, $params);
+                    } elseif ($statusCode === '02') {
+                        // 02 = Expired / Failed
+                        $this->reviewTopup($row['order_id'], 'rejected', 'gateway:duitku:status_poll', 'Pembayaran kedaluwarsa atau dibatalkan.');
+                        $row = $this->db->fetchOne($sql, $params);
+                    }
+                } catch (\Throwable $e) {
+                    error_log("Duitku live status check error for [{$row['order_id']}]: " . $e->getMessage());
+                }
+            }
         }
 
         $row['amount_minor'] = (int)$row['amount_minor'];
@@ -241,7 +264,7 @@ class TopupService
         string $adminUserId,
         ?string $rejectionReason = null
     ): array {
-        $topup = $this->getTopupByIdOrOrder($orderId);
+        $topup = $this->getTopupByIdOrOrder($orderId, null, false);
         $currentStatus = $topup['status'];
 
         if ($currentStatus === 'paid') {

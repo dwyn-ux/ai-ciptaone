@@ -31,8 +31,21 @@ class DuitkuService
         $this->merchantCode = $this->loadSetting('DUITKU_MERCHANT_CODE');
         $this->apiKey = $this->loadSetting('DUITKU_API_KEY');
         $this->mode = strtolower($this->loadSetting('DUITKU_MODE', 'sandbox'));
-        $this->callbackUrl = $this->loadSetting('DUITKU_CALLBACK_URL', 'https://ciptaone.com/api/v1/webhooks/duitku');
-        $this->returnUrl = $this->loadSetting('DUITKU_RETURN_URL', 'https://ciptaone.com/dashboard');
+        $defaultHost = $_SERVER['HTTP_HOST'] ?? 'ai.ciptaone.site';
+        $defaultProto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'https';
+        $defaultBase = "{$defaultProto}://{$defaultHost}";
+
+        $rawCb = $this->loadSetting('DUITKU_CALLBACK_URL', "{$defaultBase}/api/v1/webhooks/duitku");
+        if ($rawCb === '' || (str_contains($rawCb, 'ciptaone.com') && !str_contains($defaultHost, 'ciptaone.com'))) {
+            $rawCb = "{$defaultBase}/api/v1/webhooks/duitku";
+        }
+        $this->callbackUrl = $rawCb;
+
+        $rawReturn = $this->loadSetting('DUITKU_RETURN_URL', "{$defaultBase}/topup");
+        if ($rawReturn === '' || (str_contains($rawReturn, 'ciptaone.com') && !str_contains($defaultHost, 'ciptaone.com'))) {
+            $rawReturn = "{$defaultBase}/topup";
+        }
+        $this->returnUrl = $rawReturn;
     }
 
     private function loadSetting(string $key, string $default = ''): string

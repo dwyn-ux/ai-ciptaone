@@ -79,8 +79,8 @@ class Router
                 }
             }
 
-            // 4. Fallback for React SPA client-side routes (GET non-API requests)
-            if ($method === 'GET' && !str_starts_with($path, '/api/') && !str_starts_with($path, '/v1/')) {
+            // 4. Fallback for React SPA client-side routes (GET and POST non-API requests from gateway redirects)
+            if (($method === 'GET' || $method === 'POST') && !str_starts_with($path, '/api/') && !str_starts_with($path, '/v1/')) {
                 $htmlFile = __DIR__ . '/../../public/index.html';
                 if (file_exists($htmlFile)) {
                     if (!headers_sent()) {

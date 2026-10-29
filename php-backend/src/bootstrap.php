@@ -104,6 +104,7 @@ function createApplicationRouter(): \Ciptaone\Core\Router {
     $spaRoutes = ['/', '/landing', '/login', '/register', '/dashboard', '/playground', '/api-keys', '/topup', '/history'];
     foreach ($spaRoutes as $spaRoute) {
         $router->get($spaRoute, $spaHandler);
+        $router->post($spaRoute, $spaHandler);
     }
 
     $router->get('/admin', function (\Ciptaone\Core\Request $request) {
