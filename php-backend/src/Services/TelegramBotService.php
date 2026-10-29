@@ -372,7 +372,9 @@ class TelegramBotService
             return ['status' => 'invalid_message'];
         }
 
-        $command = strtolower(explode(' ', $text)[0]);
+        // Support commands with bot username suffix (e.g., /start@BotUsername) and arguments (/start 123)
+        $rawCommand = strtolower(explode(' ', $text)[0]);
+        $command = explode('@', $rawCommand)[0];
 
         // Security check for admin reports across all bot roles
         if (in_array($command, ['/laporan', '/report', '/daily', '/weekly', '/monthly', '/laporan_harian', '/laporan_mingguan', '/laporan_bulanan', '/ringkasan', '/stats', '/all_time'], true)) {
@@ -449,7 +451,8 @@ class TelegramBotService
 
         switch ($command) {
             case '/start':
-                $welcome = "👋 *Halo, {$firstName}! Selamat datang di AI Ciptaone.*\n\n" .
+                $cleanName = trim(preg_replace('/[*_`\[\]()]/', '', $firstName)) ?: 'Sahabat';
+                $welcome = "👋 *Halo, {$cleanName}! Selamat datang di AI Ciptaone.*\n\n" .
                            "Layanan AI Router berkecepatan tinggi dengan integrasi OpenAI & OpenRouter compatible.\n\n" .
                            "Gunakan tombol di bawah untuk transaksi instan:";
                 $replyMarkup = [

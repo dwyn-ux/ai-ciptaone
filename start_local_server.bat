@@ -38,6 +38,6 @@ echo ========================================================
 echo.
 
 cd /d "%~dp0php-backend"
-!PHP_CMD! -S 127.0.0.1:8000 -t public
+!PHP_CMD! -S 127.0.0.1:8000 -t public public/index.php
 
 pause

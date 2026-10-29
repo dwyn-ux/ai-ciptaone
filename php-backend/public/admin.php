@@ -323,6 +323,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action !== 'admin_login') {
             } else {
                 throw new Exception("Belum ada model terdaftar untuk provider '{$providerSlug}'. Silakan tambahkan model terlebih dahulu di tab Katalog Model.");
             }
+        } elseif ($action === 'sync_telegram_webhook') {
+            $token = trim((string)$config->get('TELEGRAM_BOT_TOKEN', ''));
+            if ($token === '') {
+                throw new Exception("TELEGRAM_BOT_TOKEN kosong di .env. Harap isi token bot terlebih dahulu.");
+            }
+            $secret = trim((string)$config->get('TELEGRAM_WEBHOOK_SECRET', ''));
+            $host = $_SERVER['HTTP_HOST'] ?? 'ai.ciptaone.site';
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'https';
+            $webhookUrl = "{$scheme}://{$host}/api/v1/webhooks/telegram";
+
+            $payload = [
+                'url' => $webhookUrl,
+                'allowed_updates' => ['message', 'callback_query'],
+                'drop_pending_updates' => false,
+            ];
+            if ($secret !== '') {
+                $payload['secret_token'] = $secret;
+            }
+
+            $ch = curl_init("https://api.telegram.org/bot{$token}/setWebhook");
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode($payload),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_SSL_VERIFYPEER => true,
+            ]);
+            $resRaw = curl_exec($ch);
+            curl_close($ch);
+            $res = json_decode((string)$resRaw, true);
+
+            if (!empty($res['ok'])) {
+                $message = "✅ Webhook Telegram BERHASIL Didaftarkan ke {$webhookUrl}! Bot kini aktif mendengarkan perintah /start dan pilihan paket saldo.";
+                $messageType = 'success';
+            } else {
+                $err = $res['description'] ?? 'Gagal menghubungi Telegram API';
+                throw new Exception("Telegram API error: {$err}");
+            }
         }
     } catch (\Throwable $e) {
         $message = 'Error: ' . $e->getMessage();
@@ -783,9 +822,19 @@ $activeTab = $_GET['tab'] ?? 'settings';
                             </div>
                             <div class="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-[10px] space-y-0.5">
                                 <span class="text-slate-400 font-sans block">Perintah Telegram Tersedia:</span>
-                                <code class="text-indigo-400 font-mono block">/laporan /laporan_harian /laporan_mingguan /laporan_bulanan</code>
+                                <code class="text-indigo-400 font-mono block">/start /beli /saldo /key /help /laporan</code>
                                 <span class="text-slate-500 block text-[9px] mt-0.5">Jadwalkan cron: <code class="text-slate-400">php send_report.php daily</code></span>
                             </div>
+
+                            <?php if ($telegramToken): ?>
+                            <form method="POST" class="pt-1">
+                                <input type="hidden" name="admin_action" value="sync_telegram_webhook">
+                                <button type="submit" class="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-2 shadow-sm">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    <span>Sinkronkan Webhook (Aktifkan /start & Menu)</span>
+                                </button>
+                            </form>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 title AI Ciptaone Router - Launcher
 cd /d "%~dp0"
 
@@ -6,8 +6,8 @@ echo ========================================================
 echo   Menjalankan AI Ciptaone Router (Backend + Frontend)
 echo ========================================================
 echo.
-echo [*] Membuka jendela Backend di port 8000...
-start "AI Ciptaone Backend (FastAPI)" cmd /k "run_backend.bat"
+echo [*] Membuka jendela Backend PHP di port 8000...
+start "AI Ciptaone Backend (PHP)" cmd /k "start_local_server.bat"
 
 timeout /t 3 /nobreak >nul
 
