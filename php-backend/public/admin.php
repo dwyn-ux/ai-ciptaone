@@ -16,6 +16,7 @@ use Ciptaone\Core\Database;
 use Ciptaone\Core\Security;
 use Ciptaone\Services\AuditService;
 use Ciptaone\Services\AuthService;
+use Ciptaone\Services\RouterService;
 use Ciptaone\Services\TopupService;
 use Ciptaone\Services\WalletService;
 
@@ -25,6 +26,7 @@ $authService = new AuthService($db, $config);
 $walletService = new WalletService($db);
 $auditService = new AuditService($db);
 $topupService = new TopupService($db, $config, $walletService, null, $auditService);
+$routerService = new RouterService($db, $config, $walletService);
 
 // 1. Strict Environment & Auth Check (Never allow local IP bypass in admin)
 $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -264,6 +266,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action !== 'admin_login') {
             $reason = trim($_POST['reason'] ?? 'Penyesuaian saldo manual via Admin Panel');
             $walletService->adjustBalanceAdmin($adminId, $targetUserId, $amount, $reason);
             $message = 'Saldo pengguna berhasil disesuaikan!';
+        } elseif ($action === 'test_model') {
+            $modelId = $_POST['model_id'] ?? '';
+            $testRes = $routerService->testModelConnection($modelId);
+            $message = "✅ Koneksi BERHASIL! Model '{$testRes['model']}' ({$testRes['provider']}) merespons dalam {$testRes['latency_ms']}ms. Jawaban upstream: \"{$testRes['reply']}\". Kunci API valid dan siap digunakan!";
+            $messageType = 'success';
+        } elseif ($action === 'test_provider') {
+            $providerSlug = strtolower(trim($_POST['provider_slug'] ?? ''));
+            $modelRow = $db->fetchOne('SELECT id, public_id FROM models WHERE provider_id = (SELECT id FROM providers WHERE slug = ?) LIMIT 1', [$providerSlug]);
+            if ($modelRow) {
+                $testRes = $routerService->testModelConnection($modelRow['id']);
+                $message = "✅ Koneksi Provider '" . strtoupper($providerSlug) . "' BERHASIL! (Model '{$testRes['model']}', Latency: {$testRes['latency_ms']}ms). Jawaban upstream: \"{$testRes['reply']}\". Kunci API di .env valid!";
+                $messageType = 'success';
+            } else {
+                throw new Exception("Belum ada model terdaftar untuk provider '{$providerSlug}'. Silakan tambahkan model terlebih dahulu di tab Katalog Model.");
+            }
         }
     } catch (\Throwable $e) {
         $message = 'Error: ' . $e->getMessage();
@@ -566,18 +583,18 @@ $activeTab = $_GET['tab'] ?? 'settings';
 
                     <?php
                     $providerList = [
-                        ['name' => 'OpenRouter (Aggregator 200+ Model)', 'env' => 'OPENROUTER_API_KEY', 'val' => $openrouterKey, 'desc' => 'LLaMA 3, DeepSeek Chat/Coder, Qwen, Mistral via openrouter.ai'],
-                        ['name' => 'OpenAI Official API', 'env' => 'OPENAI_API_KEY', 'val' => $openaiKey, 'desc' => 'GPT-4o, GPT-4o-mini via api.openai.com'],
-                        ['name' => 'Groq Cloud (LPU Ultra-Fast)', 'env' => 'GROQ_API_KEY', 'val' => $groqKey, 'desc' => 'Inference ultra-cepat 500+ tok/s untuk LLaMA 3.3 via api.groq.com'],
-                        ['name' => 'DeepSeek Direct API', 'env' => 'DEEPSEEK_API_KEY', 'val' => $deepseekKey, 'desc' => 'Koneksi langsung ke DeepSeek V3 & R1 via api.deepseek.com'],
-                        ['name' => 'Google Gemini (Official)', 'env' => 'GEMINI_API_KEY', 'val' => $geminiKey, 'desc' => 'Gemini 2.0 Flash & Gemini 1.5 Pro via Google AI Studio'],
-                        ['name' => 'Mistral AI Direct', 'env' => 'MISTRAL_API_KEY', 'val' => $mistralKey, 'desc' => 'Mistral Large & Codestral via api.mistral.ai'],
+                        ['slug' => 'openrouter', 'name' => 'OpenRouter (Aggregator 200+ Model)', 'env' => 'OPENROUTER_API_KEY', 'val' => $openrouterKey, 'desc' => 'LLaMA 3, DeepSeek Chat/Coder, Qwen, Mistral via openrouter.ai'],
+                        ['slug' => 'openai', 'name' => 'OpenAI Official API', 'env' => 'OPENAI_API_KEY', 'val' => $openaiKey, 'desc' => 'GPT-4o, GPT-4o-mini via api.openai.com'],
+                        ['slug' => 'groq', 'name' => 'Groq Cloud (LPU Ultra-Fast)', 'env' => 'GROQ_API_KEY', 'val' => $groqKey, 'desc' => 'Inference ultra-cepat 500+ tok/s untuk LLaMA 3.3 via api.groq.com'],
+                        ['slug' => 'deepseek', 'name' => 'DeepSeek Direct API', 'env' => 'DEEPSEEK_API_KEY', 'val' => $deepseekKey, 'desc' => 'Koneksi langsung ke DeepSeek V3 & R1 via api.deepseek.com'],
+                        ['slug' => 'gemini', 'name' => 'Google Gemini (Official)', 'env' => 'GEMINI_API_KEY', 'val' => $geminiKey, 'desc' => 'Gemini 2.0 Flash & Gemini 1.5 Pro via Google AI Studio'],
+                        ['slug' => 'mistral', 'name' => 'Mistral AI Direct', 'env' => 'MISTRAL_API_KEY', 'val' => $mistralKey, 'desc' => 'Mistral Large & Codestral via api.mistral.ai'],
                     ];
                     ?>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <?php foreach ($providerList as $p): ?>
-                            <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-2">
+                            <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-2.5">
                                 <div class="flex items-center justify-between">
                                     <span class="font-bold text-xs text-white"><?php echo htmlspecialchars($p['name']); ?></span>
                                     <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold <?php echo $p['val'] ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
@@ -594,6 +611,21 @@ $activeTab = $_GET['tab'] ?? 'settings';
                                         <span class="text-slate-600 italic">kosong</span>
                                     <?php endif; ?>
                                 </div>
+                                <?php if ($p['val']): ?>
+                                    <div class="pt-2 border-t border-slate-800 flex justify-end">
+                                        <form method="POST">
+                                            <input type="hidden" name="admin_action" value="test_provider">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
+                                            <input type="hidden" name="provider_slug" value="<?php echo htmlspecialchars($p['slug']); ?>">
+                                            <button type="submit" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                </svg>
+                                                <span>Tes Ping Provider</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -810,7 +842,19 @@ $activeTab = $_GET['tab'] ?? 'settings';
                                             <span><?php echo $m['enabled'] ? 'Online' : 'Disabled'; ?></span>
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 text-right">
+                                    <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                        <form method="POST" class="inline">
+                                            <input type="hidden" name="admin_action" value="test_model">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
+                                            <input type="hidden" name="model_id" value="<?php echo htmlspecialchars($m['id']); ?>">
+                                            <button type="submit" class="inline-flex items-center space-x-1 px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition" title="Kirim tes ping ke upstream model">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                </svg>
+                                                <span>Tes Koneksi</span>
+                                            </button>
+                                        </form>
+
                                         <form method="POST" class="inline">
                                             <input type="hidden" name="admin_action" value="toggle_model">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">

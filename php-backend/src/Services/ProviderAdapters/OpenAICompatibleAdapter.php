@@ -77,9 +77,14 @@ class OpenAICompatibleAdapter extends BaseProviderAdapter
         }
 
         if ($httpCode !== 200) {
+            $errBody = json_decode((string)$response, true);
+            $errDetail = $errBody['error']['message'] ?? $errBody['message'] ?? (string)$response;
+            if (strlen($errDetail) > 250) {
+                $errDetail = substr($errDetail, 0, 250) . '...';
+            }
             throw new AppError(
                 ErrorCode::PROVIDER_ERROR,
-                "Upstream provider error: HTTP {$httpCode}",
+                "Upstream provider error (HTTP {$httpCode}): {$errDetail}",
                 502,
                 null,
                 ['upstream_status' => $httpCode]

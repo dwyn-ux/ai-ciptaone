@@ -259,6 +259,48 @@ class RouterService
         );
     }
 
+    /**
+     * Test live upstream AI provider connection for a specific model without deducting user credits.
+     */
+    public function testModelConnection(string $modelIdOrPublicId): array
+    {
+        $modelRow = $this->db->fetchOne(
+            'SELECT m.*, p.slug as provider_slug, p.display_name as provider_name, p.enabled as provider_enabled
+             FROM models m
+             JOIN providers p ON m.provider_id = p.id
+             WHERE m.id = ? OR m.public_id = ?',
+            [$modelIdOrPublicId, $modelIdOrPublicId]
+        );
+
+        if (!$modelRow) {
+            throw new AppError(ErrorCode::NOT_FOUND, "Model '{$modelIdOrPublicId}' tidak ditemukan di database.", 404);
+        }
+
+        $upstreamModel = !empty($modelRow['upstream_model']) ? $modelRow['upstream_model'] : $modelRow['public_id'];
+        $providerSlug = (string)$modelRow['provider_slug'];
+        $adapter = $this->getAdapter($providerSlug);
+
+        $t0 = microtime(true);
+        $result = $adapter->chatCompletion(
+            $upstreamModel,
+            [['role' => 'user', 'content' => 'Tes koneksi sistem AI Router. Jawab dengan satu kata: PONG.']],
+            15,
+            0.1
+        );
+        $latencyMs = (int)round((microtime(true) - $t0) * 1000);
+
+        return [
+            'success' => true,
+            'model' => $modelRow['public_id'],
+            'upstream_model' => $upstreamModel,
+            'provider' => $modelRow['provider_name'],
+            'latency_ms' => $latencyMs,
+            'reply' => trim((string)($result['content'] ?? '')),
+            'prompt_tokens' => (int)($result['prompt_tokens'] ?? 0),
+            'completion_tokens' => (int)($result['completion_tokens'] ?? 0),
+        ];
+    }
+
     public function chatCompletion(
         string $userId,
         array $request,
