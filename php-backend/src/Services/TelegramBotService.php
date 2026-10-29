@@ -731,9 +731,29 @@ class TelegramBotService
 
             if ($topup['status'] === 'paid') {
                 $this->answerCallback($callbackId, '✅ Pembayaran SUDAH LUNAS! Saldo telah masuk ke akun Anda.', true);
-            } else {
-                $this->answerCallback($callbackId, '⏳ Status: Menunggu Pembayaran. Silakan scan QRIS di atas.', true);
+                return ['status' => 'handled'];
             }
+
+            // If still pending, check live with Duitku in case webhook was delayed or blocked
+            if ($duitku->isConfigured()) {
+                try {
+                    $statusRes = $duitku->checkTransactionStatus($orderId);
+                    $statusCode = (string)($statusRes['statusCode'] ?? '');
+                    // Duitku statusCode '00' indicates SUCCESS
+                    if ($statusCode === '00') {
+                        $topupService->reviewTopup($orderId, 'paid', 'gateway:duitku:status_poll');
+                        $this->answerCallback($callbackId, '🎉 Pembayaran terkonfirmasi LUNAS! Saldo telah ditambahkan.', true);
+                        if ($chatId !== null) {
+                            $this->sendMessage($chatId, "🎉 *PEMBAYARAN BERHASIL!*\n\nTagihan `{$orderId}` berhasil dikonfirmasi lunas via Duitku. Saldo akun Anda telah bertambah.");
+                        }
+                        return ['status' => 'handled'];
+                    }
+                } catch (\Throwable) {
+                    // Fall through to pending notification
+                }
+            }
+
+            $this->answerCallback($callbackId, '⏳ Status: Menunggu Pembayaran. Silakan selesaikan pembayaran.', true);
             return ['status' => 'handled'];
         }
 
