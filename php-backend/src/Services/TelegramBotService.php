@@ -7,6 +7,7 @@ use Ciptaone\Core\AppError;
 use Ciptaone\Core\Config;
 use Ciptaone\Core\Database;
 use Ciptaone\Core\Security;
+use Ciptaone\Services\Payments\DuitkuService;
 use Ciptaone\Services\Payments\TripayService;
 
 /**
@@ -47,6 +48,8 @@ class TelegramBotService
             'manual_transfer' => 'Transfer Bank Manual',
             'manual_qris' => 'QRIS Manual',
             'tripay_qris' => 'QRIS Dinamis (Tripay)',
+            'duitku' => 'Duitku Full Service (QRIS & VA)',
+            'duitku_qris' => 'QRIS Dinamis (Duitku)',
             default => $paymentMethod,
         };
 
@@ -130,7 +133,8 @@ class TelegramBotService
         Database $db,
         TopupService $topupService,
         ApiKeyService $apiKeyService,
-        ?TripayService $tripayService = null
+        ?TripayService $tripayService = null,
+        ?DuitkuService $duitkuService = null
     ): array {
         // 1. Handle Inline Button Callback Queries
         if (isset($update['callback_query']) && is_array($update['callback_query'])) {
@@ -139,7 +143,8 @@ class TelegramBotService
                 $db,
                 $topupService,
                 $apiKeyService,
-                $tripayService
+                $tripayService,
+                $duitkuService
             );
         }
 
@@ -236,7 +241,8 @@ class TelegramBotService
         Database|callable $dbOrCallable,
         ?TopupService $topupService = null,
         ?ApiKeyService $apiKeyService = null,
-        ?TripayService $tripayService = null
+        ?TripayService $tripayService = null,
+        ?DuitkuService $duitkuService = null
     ): array {
         $callbackId = (string)($callbackQuery['id'] ?? '');
         $fromUser = (array)($callbackQuery['from'] ?? []);
@@ -266,6 +272,7 @@ class TelegramBotService
         $topupService = $topupService ?? new TopupService($db, $this->config);
         $apiKeyService = $apiKeyService ?? new ApiKeyService($db);
         $tripay = $tripayService ?? new TripayService($this->config, $db);
+        $duitku = $duitkuService ?? new DuitkuService($this->config, $db);
 
         // Auto-provision user account
         $user = $this->getOrCreateTelegramUser($telegramUserId, $username, $firstName, $db);
@@ -327,78 +334,137 @@ class TelegramBotService
                 return ['status' => 'invalid_amount'];
             }
 
-            $this->answerCallback($callbackId, 'Membuat QRIS Dinamis Tripay...');
-
             if ($chatId === null) {
                 return ['status' => 'no_chat_id'];
             }
 
-            if (!$tripay->isConfigured()) {
+            // Priority: Duitku (if configured) or Tripay
+            if ($duitku->isConfigured()) {
+                $this->answerCallback($callbackId, 'Membuat tagihan Duitku (QRIS & VA)...');
+                try {
+                    $dateStr = gmdate('Ymd');
+                    $orderId = 'ORD-DK-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+
+                    $duitkuData = $duitku->createInvoice(
+                        $orderId,
+                        $amount,
+                        $firstName,
+                        (string)$user['email_normalized']
+                    );
+
+                    $topupId = Security::generateId('top');
+                    $nowIso = gmdate('Y-m-d H:i:s');
+                    $expiresIso = gmdate('Y-m-d H:i:s', (int)$duitkuData['expired_time']);
+
+                    $db->execute(
+                        "INSERT INTO topups (
+                            id, user_id, order_id, payment_provider, payment_method,
+                            provider_reference, amount_minor, currency, credits_to_grant,
+                            status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
+                            idempotency_key, paid_at, expires_at, created_at, updated_at
+                        ) VALUES (?, ?, ?, 'duitku', 'duitku', ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
+                        [
+                            $topupId, (string)$user['id'], $orderId,
+                            $duitkuData['reference'], $amount, $amount,
+                            "topup_order_{$orderId}", $expiresIso, $nowIso, $nowIso
+                        ]
+                    );
+
+                    $formattedAmount = number_format($amount, 0, ',', '.');
+                    $caption = "🧾 *INVOICE PEMBAYARAN DUITKU*\n\n" .
+                               "• *Order ID:* `{$orderId}`\n" .
+                               "• *Nominal:* *Rp{$formattedAmount}*\n" .
+                               "• *Metode:* QRIS & Virtual Account (BCA, Mandiri, BRI, BNI, dll)\n" .
+                               "• *Masa Berlaku:* 60 Menit\n\n" .
+                               "📱 *Petunjuk Pembayaran:*\n" .
+                               "Klik tombol *Bayar Sekarang* di bawah untuk membuka halaman pembayaran resmi Duitku atau scan QRIS bila tersedia.\n\n" .
+                               "⚡ *Verifikasi Otomatis:* Saldo dan API Key Anda akan otomatis aktif dalam hitungan detik setelah pembayaran berhasil.";
+
+                    $buttons = [];
+                    if (!empty($duitkuData['payment_url'])) {
+                        $buttons[] = [['text' => '💳 Bayar Sekarang via Duitku', 'url' => $duitkuData['payment_url']]];
+                    }
+                    $buttons[] = [['text' => '🔄 Cek Status Pembayaran', 'callback_data' => "check:{$orderId}"]];
+                    $markup = ['inline_keyboard' => $buttons];
+
+                    if (!empty($duitkuData['qr_url'])) {
+                        $this->sendPhoto($chatId, $duitkuData['qr_url'], $caption, $markup);
+                    } else {
+                        $this->sendMessage($chatId, $caption, $markup);
+                    }
+                    return ['status' => 'success', 'order_id' => $orderId];
+
+                } catch (\Throwable $e) {
+                    $this->sendMessage($chatId, "❌ Gagal membuat transaksi Duitku: {$e->getMessage()}");
+                    return ['status' => 'error', 'error' => $e->getMessage()];
+                }
+            } elseif ($tripay->isConfigured()) {
+                $this->answerCallback($callbackId, 'Membuat QRIS Dinamis Tripay...');
+                try {
+                    // Generate unique order ID
+                    $dateStr = gmdate('Ymd');
+                    $orderId = 'ORD-TP-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+
+                    // Request Tripay Dynamic QRIS
+                    $tripayData = $tripay->createQrisTransaction(
+                        $orderId,
+                        $amount,
+                        $firstName,
+                        (string)$user['email_normalized']
+                    );
+
+                    // Insert into topups table
+                    $topupId = Security::generateId('top');
+                    $nowIso = gmdate('Y-m-d H:i:s');
+                    $expiresIso = gmdate('Y-m-d H:i:s', (int)$tripayData['expired_time']);
+
+                    $db->execute(
+                        "INSERT INTO topups (
+                            id, user_id, order_id, payment_provider, payment_method,
+                            provider_reference, amount_minor, currency, credits_to_grant,
+                            status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
+                            idempotency_key, paid_at, expires_at, created_at, updated_at
+                        ) VALUES (?, ?, ?, 'tripay', 'tripay_qris', ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
+                        [
+                            $topupId, (string)$user['id'], $orderId,
+                            $tripayData['reference'], $amount, $amount,
+                            "topup_order_{$orderId}", $expiresIso, $nowIso, $nowIso
+                        ]
+                    );
+
+                    $formattedAmount = number_format($amount, 0, ',', '.');
+                    $caption = "🧾 *INVOICE QRIS DINAMIS*\n\n" .
+                               "• *Order ID:* `{$orderId}`\n" .
+                               "• *Nominal:* *Rp{$formattedAmount}*\n" .
+                               "• *Masa Berlaku:* 15 Menit\n\n" .
+                               "📱 *Petunjuk Pembayaran:*\n" .
+                               "1. Buka aplikasi e-Wallet atau Mobile Banking Anda (BCA, Mandiri, BRI, GoPay, OVO, Dana, ShopeePay).\n" .
+                               "2. Scan QRIS di atas dan periksa nominalnya.\n" .
+                               "3. Selesaikan pembayaran.\n\n" .
+                               "⚡ *Verifikasi Otomatis:* Saldo dan API Key Anda akan otomatis aktif dalam 3 detik setelah pembayaran berhasil.";
+
+                    $checkMarkup = [
+                        'inline_keyboard' => [
+                            [
+                                ['text' => '🔄 Cek Status Pembayaran', 'callback_data' => "check:{$orderId}"],
+                            ]
+                        ]
+                    ];
+
+                    $this->sendPhoto($chatId, $tripayData['qr_url'], $caption, $checkMarkup);
+                    return ['status' => 'success', 'order_id' => $orderId];
+
+                } catch (\Throwable $e) {
+                    $this->sendMessage($chatId, "❌ Gagal membuat transaksi QRIS: {$e->getMessage()}");
+                    return ['status' => 'error', 'error' => $e->getMessage()];
+                }
+            } else {
                 $this->sendMessage(
                     $chatId,
-                    "⚠️ *Layanan QRIS Otomatis Sedang Disiapkan*\n\n" .
-                    "Payment gateway Tripay sedang dalam konfigurasi oleh admin. Silakan hubungi admin atau gunakan opsi pembayaran manual di website."
+                    "⚠️ *Layanan Pembayaran Otomatis Sedang Disiapkan*\n\n" .
+                    "Payment gateway (Duitku / Tripay) sedang dalam konfigurasi oleh admin. Silakan hubungi admin atau gunakan opsi pembayaran manual di website."
                 );
-                return ['status' => 'tripay_not_configured'];
-            }
-
-            try {
-                // Generate unique order ID
-                $dateStr = gmdate('Ymd');
-                $orderId = 'ORD-TP-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
-
-                // Request Tripay Dynamic QRIS
-                $tripayData = $tripay->createQrisTransaction(
-                    $orderId,
-                    $amount,
-                    $firstName,
-                    (string)$user['email_normalized']
-                );
-
-                // Insert into topups table
-                $topupId = Security::generateId('top');
-                $nowIso = gmdate('Y-m-d H:i:s');
-                $expiresIso = gmdate('Y-m-d H:i:s', (int)$tripayData['expired_time']);
-
-                $db->execute(
-                    "INSERT INTO topups (
-                        id, user_id, order_id, payment_provider, payment_method,
-                        provider_reference, amount_minor, currency, credits_to_grant,
-                        status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
-                        idempotency_key, paid_at, expires_at, created_at, updated_at
-                    ) VALUES (?, ?, ?, 'tripay', 'tripay_qris', ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
-                    [
-                        $topupId, (string)$user['id'], $orderId,
-                        $tripayData['reference'], $amount, $amount,
-                        "topup_order_{$orderId}", $expiresIso, $nowIso, $nowIso
-                    ]
-                );
-
-                $formattedAmount = number_format($amount, 0, ',', '.');
-                $caption = "🧾 *INVOICE QRIS DINAMIS*\n\n" .
-                           "• *Order ID:* `{$orderId}`\n" .
-                           "• *Nominal:* *Rp{$formattedAmount}*\n" .
-                           "• *Masa Berlaku:* 15 Menit\n\n" .
-                           "📱 *Petunjuk Pembayaran:*\n" .
-                           "1. Buka aplikasi e-Wallet atau Mobile Banking Anda (BCA, Mandiri, BRI, GoPay, OVO, Dana, ShopeePay).\n" .
-                           "2. Scan QRIS di atas dan periksa nominalnya.\n" .
-                           "3. Selesaikan pembayaran.\n\n" .
-                           "⚡ *Verifikasi Otomatis:* Saldo dan API Key Anda akan otomatis aktif dalam 3 detik setelah pembayaran berhasil.";
-
-                $checkMarkup = [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '🔄 Cek Status Pembayaran', 'callback_data' => "check:{$orderId}"],
-                        ]
-                    ]
-                ];
-
-                $this->sendPhoto($chatId, $tripayData['qr_url'], $caption, $checkMarkup);
-                return ['status' => 'success', 'order_id' => $orderId];
-
-            } catch (\Throwable $e) {
-                $this->sendMessage($chatId, "❌ Gagal membuat transaksi QRIS: {$e->getMessage()}");
-                return ['status' => 'error', 'error' => $e->getMessage()];
+                return ['status' => 'payment_gateway_not_configured'];
             }
         }
 

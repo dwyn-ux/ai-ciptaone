@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS topups (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     order_id TEXT UNIQUE NOT NULL,
     payment_provider TEXT NOT NULL,
-    payment_method TEXT NOT NULL CHECK(payment_method IN ('manual_transfer', 'manual_qris', 'dana_qris_dynamic', 'tripay_qris')),
+    payment_method TEXT NOT NULL CHECK(payment_method IN ('manual_transfer', 'manual_qris', 'dana_qris_dynamic', 'tripay_qris', 'duitku', 'duitku_qris')),
     provider_reference TEXT NULL,
     amount_minor INTEGER NOT NULL,
     currency TEXT NOT NULL DEFAULT 'IDR',

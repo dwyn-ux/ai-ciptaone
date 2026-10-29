@@ -21,4 +21,6 @@ class ErrorCode
     public const INTERNAL_ERROR             = 'internal_error';
     public const NOT_FOUND                  = 'not_found';
     public const CSRF_INVALID               = 'csrf_invalid';
+    public const SERVICE_UNAVAILABLE        = 'service_unavailable';
+    public const BUDGET_EXCEEDED            = 'budget_exceeded';
 }

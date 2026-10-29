@@ -56,6 +56,14 @@ class RouterService
 
     private function getSettingValue(string $key): string
     {
+        // 1. Strict Priority: Server environment (.env)
+        // Hardcoded in file to protect from database injection or web admin tampering
+        $envVal = (string)$this->config->get($key, '');
+        if (trim($envVal) !== '') {
+            return trim($envVal);
+        }
+
+        // 2. Non-production fallback (testing isolation)
         try {
             $row = $this->db->fetchOne('SELECT setting_value FROM system_settings WHERE setting_key = ?', [$key]);
             if ($row !== null && !empty($row['setting_value'])) {
@@ -63,7 +71,42 @@ class RouterService
             }
         } catch (\Throwable) {
         }
-        return (string)$this->config->get($key, '');
+        return '';
+    }
+
+    /**
+     * Financial Circuit Breaker: Enforces global maximum daily AI spending limit.
+     * Prevents unexpected billing surges if traffic spikes or anomalies occur.
+     */
+    public function checkDailySpendingLimit(): void
+    {
+        $dailyLimit = (int)$this->config->get('MAX_DAILY_AI_CREDITS', 0);
+        if ($dailyLimit <= 0) {
+            return;
+        }
+
+        $todayStart = gmdate('Y-m-d 00:00:00');
+        try {
+            $row = $this->db->fetchOne(
+                "SELECT COALESCE(SUM(billed_credits), 0) AS total_today
+                 FROM usage_events
+                 WHERE created_at >= ? AND status = 'success'",
+                [$todayStart]
+            );
+            $totalBilledToday = (int)($row['total_today'] ?? 0);
+
+            if ($totalBilledToday >= $dailyLimit) {
+                throw new AppError(
+                    ErrorCode::SERVICE_UNAVAILABLE,
+                    "Batas kuota pengeluaran harian sistem telah tercapai ({$dailyLimit} kredit/hari). Untuk perlindungan keamanan tagihan, layanan AI dijeda sementara hingga pergantian hari (00:00 UTC).",
+                    503
+                );
+            }
+        } catch (AppError $ae) {
+            throw $ae;
+        } catch (\Throwable $ex) {
+            // If table check fails, pass through safely
+        }
     }
 
     public static function ensureDefaultProviders(Database $db): void
@@ -229,7 +272,9 @@ class RouterService
         $messages = (array)($request['messages'] ?? []);
         $temperature = (float)($request['temperature'] ?? 0.7);
 
-        // 1. Validate Model
+        // 1. Validate Model & System Daily Spending Limit (Circuit Breaker)
+        $this->checkDailySpendingLimit();
+
         $modelRow = $this->getModelByPublicId($modelName);
         if ($modelRow === null || empty($modelRow['model_enabled']) || empty($modelRow['provider_enabled'])) {
             throw new AppError(
@@ -362,6 +407,15 @@ class RouterService
 
         // Start SSE headers
         Response::startSse();
+
+        // Financial Circuit Breaker check
+        try {
+            $this->checkDailySpendingLimit();
+        } catch (AppError $ae) {
+            Response::sendSseChunk($ae->toEnvelope());
+            Response::sendSseDone();
+            exit;
+        }
 
         $modelRow = $this->getModelByPublicId($modelName);
         if ($modelRow === null || empty($modelRow['model_enabled']) || empty($modelRow['provider_enabled'])) {

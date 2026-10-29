@@ -74,6 +74,15 @@ class Config
             'TRIPAY_PRIVATE_KEY' => '',
             'TRIPAY_MERCHANT_CODE' => '',
             'TRIPAY_MODE' => 'sandbox', // 'sandbox' or 'production'
+            'TRIPAY_WEBHOOK_IP_WHITELIST' => '',
+
+            // Duitku Payment Gateway (Full Service: QRIS & VA)
+            'DUITKU_MERCHANT_CODE' => '',
+            'DUITKU_API_KEY' => '',
+            'DUITKU_MODE' => 'sandbox',
+            'DUITKU_CALLBACK_URL' => 'https://ciptaone.com/api/v1/webhooks/duitku',
+            'DUITKU_RETURN_URL' => 'https://ciptaone.com/dashboard',
+            'DUITKU_WEBHOOK_IP_WHITELIST' => '',
 
             // DANA (Deactivated by default until merchant verified)
             'DANA_ENABLED' => false,
@@ -84,9 +93,18 @@ class Config
             'DANA_PUBLIC_KEY' => '',
             'DANA_PRIVATE_KEY' => '',
 
-            // Upstream AI
+            // Upstream AI Providers
             'OPENROUTER_API_KEY' => '',
             'OPENAI_API_KEY' => '',
+            'GROQ_API_KEY' => '',
+            'DEEPSEEK_API_KEY' => '',
+            'GEMINI_API_KEY' => '',
+            'MISTRAL_API_KEY' => '',
+            'CUSTOM_PROVIDER_BASE_URL' => '',
+            'CUSTOM_PROVIDER_API_KEY' => '',
+
+            // Financial Protection & Circuit Breakers (0 = disabled)
+            'MAX_DAILY_AI_CREDITS' => 500000, // Max 500.000 credits (~Rp 500.000) spend per day globally across router
 
             // Rate Limits
             'RATE_LIMIT_LOGIN_PER_MINUTE' => 5,

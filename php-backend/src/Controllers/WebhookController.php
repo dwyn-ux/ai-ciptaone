@@ -11,7 +11,9 @@ use Ciptaone\Core\Response;
 use Ciptaone\Core\Security;
 use Ciptaone\Services\ApiKeyService;
 use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
+use Ciptaone\Services\PaymentAdapters\DuitkuPaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\TripayPaymentAdapter;
+use Ciptaone\Services\Payments\DuitkuService;
 use Ciptaone\Services\Payments\TripayService;
 use Ciptaone\Services\TelegramBotService;
 use Ciptaone\Services\TopupService;
@@ -49,13 +51,15 @@ class WebhookController extends BaseController
         $payload = $request->getBody();
         $apiKeyService = new ApiKeyService($this->db);
         $tripayService = new TripayService($this->config, $this->db);
+        $duitkuService = new DuitkuService($this->config, $this->db);
 
         $this->telegramBot->handleTelegramUpdate(
             $payload,
             $this->db,
             $this->topupService,
             $apiKeyService,
-            $tripayService
+            $tripayService,
+            $duitkuService
         );
 
         Response::json(['ok' => true]);
@@ -69,6 +73,17 @@ class WebhookController extends BaseController
         $payloadHash = hash('sha256', $rawBody);
         $nowIso = gmdate('Y-m-d H:i:s');
         $webhookId = Security::generateId('wh');
+
+        // Optional IP Whitelist enforcement if configured in .env
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+        $whitelistKey = strtoupper($gateway) . '_WEBHOOK_IP_WHITELIST';
+        $whitelistStr = (string)$this->config->get($whitelistKey, '');
+        if ($whitelistStr !== '') {
+            $allowedIps = array_filter(array_map('trim', explode(',', $whitelistStr)));
+            if (!in_array($clientIp, $allowedIps, true)) {
+                throw new AppError(ErrorCode::FORBIDDEN, "IP sumber webhook '{$clientIp}' tidak terdaftar pada whitelist resmi {$gateway}.", 403);
+            }
+        }
 
         // Deduplication check
         $existing = $this->db->fetchOne(
@@ -104,6 +119,40 @@ class WebhookController extends BaseController
                         $orderId,
                         'paid',
                         'gateway:tripay:webhook'
+                    );
+
+                    $this->db->execute(
+                        'UPDATE payment_webhook_events SET processing_status = "processed", processed_at = ? WHERE id = ?',
+                        [$nowIso, $webhookId]
+                    );
+
+                    // Push instant fulfillment to Telegram customer
+                    $this->notifyCustomerPaymentSuccess($orderId, (int)($verifiedData['amount'] ?? 0));
+                }
+            } catch (\Throwable $ex) {
+                $this->db->execute(
+                    'UPDATE payment_webhook_events SET processing_status = "failed", error_code = ? WHERE id = ?',
+                    [substr($ex->getMessage(), 0, 255), $webhookId]
+                );
+                throw $ex;
+            }
+        } elseif ($gateway === 'duitku') {
+            $adapter = new DuitkuPaymentAdapter(null, $this->config, $this->db);
+            try {
+                $verifiedData = $adapter->verifyWebhook($headers, $rawBody);
+                $orderId = (string)($verifiedData['order_id'] ?? '');
+
+                if (($verifiedData['status'] ?? '') === 'paid') {
+                    // Defensive amount check: ensure paid amount is not less than required invoice amount
+                    $topupRecord = $this->db->fetchOne('SELECT amount_minor FROM topups WHERE order_id = ?', [$orderId]);
+                    if ($topupRecord !== null && (int)($verifiedData['amount'] ?? 0) < (int)$topupRecord['amount_minor']) {
+                        throw new AppError(ErrorCode::INVALID_REQUEST, 'Nominal pembayaran webhook lebih kecil dari jumlah tagihan invoice.', 400);
+                    }
+
+                    $this->topupService->reviewTopup(
+                        $orderId,
+                        'paid',
+                        'gateway:duitku:webhook'
                     );
 
                     $this->db->execute(

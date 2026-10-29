@@ -499,7 +499,7 @@
                 "required": ["amount_minor", "payment_method"],
                 "properties": {
                   "amount_minor": { "type": "integer", "example": 50000, "description": "Nominal dalam Rupiah" },
-                  "payment_method": { "type": "string", "enum": ["manual_transfer", "tripay_qris"], "example": "manual_transfer" }
+                  "payment_method": { "type": "string", "enum": ["manual_transfer", "manual_qris", "tripay_qris", "duitku", "duitku_qris"], "example": "duitku" }
                 }
               }
             }

@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS `topups` (
     `user_id` VARCHAR(64) NOT NULL,
     `order_id` VARCHAR(64) NOT NULL,
     `payment_provider` VARCHAR(64) NOT NULL,
-    `payment_method` ENUM('manual_transfer', 'manual_qris', 'dana_qris_dynamic', 'tripay_qris') NOT NULL,
+    `payment_method` ENUM('manual_transfer', 'manual_qris', 'dana_qris_dynamic', 'tripay_qris', 'duitku', 'duitku_qris') NOT NULL,
     `provider_reference` VARCHAR(128) NULL,
     `amount_minor` BIGINT NOT NULL,
     `currency` VARCHAR(16) NOT NULL DEFAULT 'IDR',

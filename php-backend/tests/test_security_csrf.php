@@ -88,4 +88,39 @@ function test_security_csrf_suite(Database $db): void
         }
         assert($magicBytesCaught, 'Disguised PHP script with fake image/jpeg header was not blocked by magic bytes inspection');
     }
+
+    // 6. Test Financial Circuit Breaker (Rem Darurat Pengeluaran Harian)
+    $config->set('MAX_DAILY_AI_CREDITS', 500); // Set strict test limit of 500 credits
+    $routerService = new \Ciptaone\Services\RouterService($db, $config);
+
+    $userRow = $db->fetchOne('SELECT id FROM users LIMIT 1');
+    $uId = $userRow ? (string)$userRow['id'] : 'usr_default';
+    $modRow = $db->fetchOne('SELECT id, provider_id FROM models LIMIT 1');
+    $mId = $modRow ? (string)$modRow['id'] : 'mod_mock';
+    $pId = $modRow ? (string)$modRow['provider_id'] : 'prov_mock';
+
+    // Insert dummy usage exceeding limit
+    $nowIso = gmdate('Y-m-d H:i:s');
+    $db->execute(
+        "INSERT INTO usage_events (id, request_id, user_id, api_key_id, model_id, provider_id, input_tokens, output_tokens, estimated_cost_minor, billed_credits, latency_ms, status, created_at)
+         VALUES ('usg_test_cb', 'req_test_cb', ?, NULL, ?, ?, 100, 100, 600, 600, 50, 'success', ?)",
+        [$uId, $mId, $pId, $nowIso]
+    );
+
+    $circuitBreakerCaught = false;
+    try {
+        $routerService->checkDailySpendingLimit();
+    } catch (AppError $ae) {
+        $circuitBreakerCaught = true;
+        assert($ae->getStatusCode() === 503, 'Circuit breaker should return 503 Service Unavailable');
+    }
+    assert($circuitBreakerCaught, 'Circuit breaker failed to halt execution when daily limit was exceeded');
+
+    // 7. Test .env Strict Precedence for Payment Gateways (Cannot be overridden by database)
+    $config->set('TRIPAY_API_KEY', 'TRIPAY_ENV_SECURE_KEY');
+    $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES ("TRIPAY_API_KEY", "TRIPAY_TAMPERED_DB_KEY", ?)', [$nowIso]);
+    $tripayService = new \Ciptaone\Services\Payments\TripayService($config, $db);
+    $reflection = new \ReflectionProperty($tripayService, 'apiKey');
+    $reflection->setAccessible(true);
+    assert($reflection->getValue($tripayService) === 'TRIPAY_ENV_SECURE_KEY', '.env key must strictly override database setting');
 }

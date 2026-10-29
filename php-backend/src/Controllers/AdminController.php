@@ -389,6 +389,11 @@ class AdminController extends BaseController
         $tripayMerchant = $this->getSettingValue('TRIPAY_MERCHANT_CODE');
         $tripayMode = $this->getSettingValue('TRIPAY_MODE') ?: 'sandbox';
 
+        $duitkuApiKey = $this->getSettingValue('DUITKU_API_KEY');
+        $duitkuMerchant = $this->getSettingValue('DUITKU_MERCHANT_CODE');
+        $duitkuMode = $this->getSettingValue('DUITKU_MODE') ?: 'sandbox';
+        $duitkuCallback = $this->getSettingValue('DUITKU_CALLBACK_URL') ?: 'https://ciptaone.com/api/v1/webhooks/duitku';
+
         Response::json([
             'openrouter' => [
                 'configured' => !empty($openrouter),
@@ -430,6 +435,13 @@ class AdminController extends BaseController
                 'masked_api_key' => !empty($tripayApiKey) ? substr($tripayApiKey, 0, 6) . '••••••••' . substr($tripayApiKey, -4) : null,
                 'masked_private_key' => !empty($tripayPrivKey) ? substr($tripayPrivKey, 0, 4) . '••••••••' . substr($tripayPrivKey, -4) : null,
             ],
+            'duitku' => [
+                'configured' => !empty($duitkuApiKey) && !empty($duitkuMerchant),
+                'merchant_code' => $duitkuMerchant,
+                'mode' => $duitkuMode,
+                'callback_url' => $duitkuCallback,
+                'masked_api_key' => !empty($duitkuApiKey) ? substr($duitkuApiKey, 0, 6) . '••••••••' . substr($duitkuApiKey, -4) : null,
+            ],
         ]);
     }
 
@@ -437,6 +449,16 @@ class AdminController extends BaseController
     {
         Security::validateCsrf($request, $this->config);
         $admin = $this->getAdminUser($request);
+
+        // Security Lockdown: In production, sensitive API & gateway keys cannot be altered via HTTP API
+        if ($this->config->get('APP_ENV') === 'production') {
+            throw new AppError(
+                ErrorCode::FORBIDDEN,
+                'Pengubahan kredensial API & secret gateway via API dinonaktifkan pada lingkungan produksi demi keamanan. Harap kelola konfigurasi langsung melalui file .env server.',
+                403
+            );
+        }
+
         $body = $request->getBody();
         $nowIso = gmdate('Y-m-d H:i:s');
 
@@ -445,7 +467,8 @@ class AdminController extends BaseController
             'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'GEMINI_API_KEY', 'MISTRAL_API_KEY',
             'CUSTOM_PROVIDER_BASE_URL', 'CUSTOM_PROVIDER_API_KEY',
             'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS',
-            'TRIPAY_API_KEY', 'TRIPAY_PRIVATE_KEY', 'TRIPAY_MERCHANT_CODE', 'TRIPAY_MODE'
+            'TRIPAY_API_KEY', 'TRIPAY_PRIVATE_KEY', 'TRIPAY_MERCHANT_CODE', 'TRIPAY_MODE',
+            'DUITKU_API_KEY', 'DUITKU_MERCHANT_CODE', 'DUITKU_MODE', 'DUITKU_CALLBACK_URL'
         ];
         $updated = [];
 

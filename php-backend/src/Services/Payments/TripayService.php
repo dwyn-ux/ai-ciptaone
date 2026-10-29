@@ -35,6 +35,14 @@ class TripayService
 
     private function loadSetting(string $key, string $default = ''): string
     {
+        // 1. Strict Security Priority: Server environment (.env)
+        // Hardcoded in file to protect from database injection or admin tampering
+        $envVal = (string)$this->config->get($key, '');
+        if (trim($envVal) !== '') {
+            return trim($envVal);
+        }
+
+        // 2. Non-production fallback (for test suite isolation)
         if ($this->db !== null) {
             try {
                 $row = $this->db->fetchOne('SELECT setting_value FROM system_settings WHERE setting_key = ?', [$key]);
@@ -45,7 +53,7 @@ class TripayService
                 // Table might not exist during early bootstrap
             }
         }
-        return (string)$this->config->get($key, $default);
+        return $default;
     }
 
     public function isConfigured(): bool

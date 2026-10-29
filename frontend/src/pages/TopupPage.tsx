@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { apiFetch, uploadFile, ApiError } from "../api/client";
 import {
@@ -13,6 +13,7 @@ import {
   Check,
   Building,
   ShieldAlert,
+  ExternalLink,
 } from "lucide-react";
 
 interface TopupResponse {
@@ -24,15 +25,24 @@ interface TopupResponse {
   payment_method: string;
   status: string;
   expires_at: string;
+  checkout_url?: string;
+  qr_url?: string;
+  qr_string?: string;
   instructions: {
     method?: string;
+    metode?: string;
     title?: string;
     bank_name?: string;
     account_number?: string;
     account_holder?: string;
     instruction?: string;
+    keterangan?: string;
+    checkout_url?: string;
+    qr_url?: string;
+    va_number?: string;
     order_id?: string;
     amount?: number;
+    nominal?: number;
   };
 }
 
@@ -53,7 +63,7 @@ export const TopupPage: React.FC = () => {
   const { wallet, refreshWallet } = useAuth();
   const [selectedAmount, setSelectedAmount] = useState<number>(50000);
   const [customAmount, setCustomAmount] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("manual_transfer");
+  const [paymentMethod, setPaymentMethod] = useState<string>("duitku");
   const [activeInvoice, setActiveInvoice] = useState<TopupResponse | null>(null);
   const [history, setHistory] = useState<TopupItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -228,60 +238,107 @@ export const TopupPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Payment Instructions */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Instruksi Transfer
-                </h4>
-
-                <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 flex items-center">
-                      <Building className="w-4 h-4 mr-2 text-slate-400" /> Bank Tujuan:
+              {/* Online Payment Link (Duitku) */}
+              {activeInvoice.checkout_url && (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                      Pembayaran Online Otomatis
                     </span>
-                    <span className="font-semibold text-slate-900">
-                      {activeInvoice.instructions.bank_name || "BCA"}
+                    <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                      Konfirmasi Otomatis 24/7
                     </span>
                   </div>
+                  <p className="text-xs text-emerald-700 leading-relaxed">
+                    Klik tombol di bawah untuk membuka halaman pembayaran resmi Duitku. Anda dapat memilih <b>QRIS</b>, <b>Virtual Account</b> (BCA, Mandiri, BRI, BNI, Permata, CIMB), atau <b>E-Wallet</b>. Saldo kredit akan langsung masuk seketika setelah pembayaran.
+                  </p>
+                  <a
+                    href={activeInvoice.checkout_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition space-x-2"
+                  >
+                    <span>💳 Bayar Sekarang via Duitku</span>
+                    <ExternalLink className="w-4 h-4 ml-1" />
+                  </a>
+                </div>
+              )}
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Nomor Rekening:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono font-bold text-slate-900">
-                        {activeInvoice.instructions.account_number || "1234567890"}
+              {/* QRIS Image if available */}
+              {activeInvoice.qr_url && (
+                <div className="p-4 rounded-xl border border-slate-200 bg-white text-center space-y-3">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Scan QRIS Dinamis
+                  </div>
+                  <div className="flex justify-center py-2">
+                    <img
+                      src={activeInvoice.qr_url}
+                      alt="QRIS Dinamis"
+                      className="w-56 h-56 rounded-lg border border-slate-200 shadow-sm object-contain"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Buka GoPay, OVO, ShopeePay, DANA, BCA Mobile, atau m-Banking Anda lalu pindai kode QR di atas.
+                  </p>
+                </div>
+              )}
+
+              {/* Manual Bank Instructions (if bank_name is provided) */}
+              {activeInvoice.instructions.account_number && !activeInvoice.checkout_url && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Instruksi Transfer
+                  </h4>
+
+                  <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500 flex items-center">
+                        <Building className="w-4 h-4 mr-2 text-slate-400" /> Bank Tujuan:
                       </span>
-                      <button
-                        onClick={() => copyText(activeInvoice.instructions.account_number || "1234567890")}
-                        className="p-1 hover:bg-slate-100 rounded text-indigo-600"
-                        title="Salin No. Rekening"
-                      >
-                        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
+                      <span className="font-semibold text-slate-900">
+                        {activeInvoice.instructions.bank_name || "BCA"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Nomor Rekening:</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono font-bold text-slate-900">
+                          {activeInvoice.instructions.account_number || "1234567890"}
+                        </span>
+                        <button
+                          onClick={() => copyText(activeInvoice.instructions.account_number || "1234567890")}
+                          className="p-1 hover:bg-slate-100 rounded text-indigo-600"
+                          title="Salin No. Rekening"
+                        >
+                          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Atas Nama:</span>
+                      <span className="font-semibold text-slate-900">
+                        {activeInvoice.instructions.account_holder || "AI Ciptaone Router"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Berita Transfer:</span>
+                      <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                        {activeInvoice.order_id}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Atas Nama:</span>
-                    <span className="font-semibold text-slate-900">
-                      {activeInvoice.instructions.account_holder || "AI Ciptaone Router"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Berita Transfer:</span>
-                    <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                      {activeInvoice.order_id}
-                    </span>
-                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {activeInvoice.instructions.instruction}
+                  </p>
                 </div>
+              )}
 
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  {activeInvoice.instructions.instruction}
-                </p>
-              </div>
-
-              {/* Proof Upload Box */}
-              {activeInvoice.status !== "paid" && (
+              {/* Proof Upload Box (shown for manual payments, or optional fallback) */}
+              {activeInvoice.status !== "paid" && (!activeInvoice.checkout_url || activeInvoice.instructions.account_number) && (
                 <form onSubmit={handleUploadProof} className="pt-4 border-t border-slate-100 space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Kirim Bukti Pembayaran
@@ -378,6 +435,35 @@ export const TopupPage: React.FC = () => {
                 </label>
 
                 <div className="space-y-3">
+                  {/* Duitku Full Service (QRIS, VA Semua Bank, E-Wallet) */}
+                  <label
+                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
+                      paymentMethod === "duitku"
+                        ? "border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="duitku"
+                      checked={paymentMethod === "duitku"}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mt-1 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div className="ml-3">
+                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
+                        <span>Duitku Full Service (QRIS & VA Otomatis)</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                          Instan 24/7
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        QRIS (BCA, GoPay, OVO, ShopeePay, DANA) & Virtual Account (BCA, Mandiri, BRI, BNI, Permata, CIMB). Saldo masuk otomatis seketika.
+                      </div>
+                    </div>
+                  </label>
+
                   {/* Manual Bank Transfer */}
                   <label
                     className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${

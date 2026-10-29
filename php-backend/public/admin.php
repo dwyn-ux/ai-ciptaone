@@ -26,15 +26,15 @@ $walletService = new WalletService($db);
 $auditService = new AuditService($db);
 $topupService = new TopupService($db, $config, $walletService, null, $auditService);
 
-// 1. Strict Environment & Auth Check (Never rely solely on spoofable HTTP_HOST)
-$isDev = $config->get('APP_ENV') === 'development';
+// 1. Strict Environment & Auth Check (Never allow local IP bypass in admin)
 $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
-$isLocal = $isDev && in_array($clientIp, ['127.0.0.1', '::1', '::ffff:127.0.0.1'], true);
+$rateLimiter = new \Ciptaone\Core\RateLimiter($db);
 
 $cookieName = (string)$config->get('SESSION_COOKIE_NAME', 'ciptaone_session');
 $sessionCookie = $_COOKIE[$cookieName] ?? '';
 $currentUser = $sessionCookie ? $authService->getUserFromSession($sessionCookie) : null;
-$isAdmin = ($currentUser && ($currentUser['role'] ?? '') === 'admin') || $isLocal;
+// Strict admin privilege verification: MUST have active session with role 'admin'
+$isAdmin = ($currentUser !== null && ($currentUser['role'] ?? '') === 'admin');
 
 // 2. Handle Logout Action
 $action = $_POST['admin_action'] ?? ($_GET['action'] ?? '');
@@ -47,7 +47,7 @@ if ($action === 'logout') {
     exit;
 }
 
-// 3. Handle Admin Login Form Action & First Admin Bootstrap
+// 3. Handle Admin Login Form Action & Rate Limiting
 $loginError = '';
 $adminCount = 0;
 try {
@@ -56,45 +56,20 @@ try {
 } catch (\Throwable) {}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($action === 'init_admin') {
-        $email = trim((string)($_POST['email'] ?? ''));
-        $password = (string)($_POST['password'] ?? '');
-        $confirmPassword = (string)($_POST['confirm_password'] ?? '');
-
-        try {
-            if ($adminCount > 0) {
-                throw new Exception('Akun administrator sudah terdaftar. Silakan login.');
-            }
-            if ($password !== $confirmPassword) {
-                throw new Exception('Konfirmasi kata sandi tidak cocok.');
-            }
-            if (strlen($password) < 8) {
-                throw new Exception('Kata sandi minimal 8 karakter.');
-            }
-
-            $user = $authService->register($email, $password);
-            $db->execute("UPDATE users SET role = 'admin' WHERE id = ?", [$user['id']]);
-
-            [$loggedInUser, $rawToken] = $authService->login($email, $password);
-            $secureCookie = !$isLocal && (($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['SERVER_PORT'] ?? '') === '443');
-            setcookie($cookieName, $rawToken, time() + 604800, '/', '', $secureCookie, true);
-
-            header('Location: /admin.php');
-            exit;
-        } catch (\Throwable $e) {
-            $loginError = $e->getMessage();
-        }
-    } elseif ($action === 'admin_login') {
+    if ($action === 'admin_login') {
         $email = trim((string)($_POST['email'] ?? ''));
         $password = (string)($_POST['password'] ?? '');
 
         try {
+            // Anti-Brute Force Protection: Max 5 failed attempts per 5 minutes per IP
+            $rateLimiter->checkRateLimit('admin_login_ip_' . md5($clientIp), 5, 300);
+
             [$user, $rawToken] = $authService->login($email, $password);
             if (($user['role'] ?? '') !== 'admin') {
                 throw new Exception('Akses ditolak: Akun Anda tidak memiliki hak akses administrator.');
             }
 
-            $secureCookie = !$isLocal && (($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['SERVER_PORT'] ?? '') === '443');
+            $secureCookie = (($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['SERVER_PORT'] ?? '') === '443');
             setcookie(
                 $cookieName,
                 $rawToken,
@@ -131,44 +106,27 @@ if (!$isAdmin) {
     <body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4">
         <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6">
             <?php if ($adminCount === 0): ?>
-                <!-- Initial Setup View -->
-                <div class="text-center space-y-2">
-                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center mx-auto text-white shadow-lg shadow-emerald-500/25">
+                <!-- Initial Setup View: CLI only for maximum security -->
+                <div class="text-center space-y-3">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400 shadow-lg shadow-amber-500/10">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
-                    <h1 class="text-xl font-extrabold text-white tracking-tight">Setup Admin Pertama</h1>
-                    <p class="text-xs text-slate-400">Belum ada akun admin di database. Buat akun administrator utama Anda untuk mulai mengelola router.</p>
+                    <h1 class="text-xl font-extrabold text-white tracking-tight">Akun Admin Belum Dibuat</h1>
+                    <p class="text-xs text-slate-400">Demi mencegah pengambilalihan akun via web oleh pihak luar, pembuatan akun administrator pertama hanya diizinkan melalui terminal server.</p>
                 </div>
 
-                <?php if ($loginError): ?>
-                    <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-semibold text-rose-300 flex items-center space-x-2">
-                        <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
+                    <p class="text-slate-300 font-semibold flex items-center space-x-1.5">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span><?php echo htmlspecialchars($loginError); ?></span>
-                    </div>
-                <?php endif; ?>
-
-                <form method="POST" class="space-y-4">
-                    <input type="hidden" name="admin_action" value="init_admin">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email Administrator</label>
-                        <input type="email" name="email" required placeholder="admin@ciptaone.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Kata Sandi (Minimal 8 Karakter)</label>
-                        <input type="password" name="password" required placeholder="••••••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Konfirmasi Kata Sandi</label>
-                        <input type="password" name="confirm_password" required placeholder="••••••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600">
-                    </div>
-                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
-                        <span>Buat Akun & Masuk</span>
-                    </button>
-                </form>
+                        <span>Jalankan di Terminal / SSH Server:</span>
+                    </p>
+                    <code class="block font-mono bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-emerald-400 select-all break-all">php create_admin.php admin@decomu.site PasswordKuat123#</code>
+                    <p class="text-[11px] text-slate-500 pt-1">Setelah akun admin dibuat melalui terminal, refresh halaman ini untuk login.</p>
+                </div>
             <?php else: ?>
                 <!-- Standard Login View -->
                 <div class="text-center space-y-2">
@@ -230,23 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action !== 'admin_login') {
         }
 
         if ($action === 'save_settings') {
-            $nowIso = gmdate('Y-m-d H:i:s');
-            $allowed = [
-                'OPENROUTER_API_KEY', 'OPENAI_API_KEY',
-                'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'GEMINI_API_KEY', 'MISTRAL_API_KEY',
-                'CUSTOM_PROVIDER_BASE_URL', 'CUSTOM_PROVIDER_API_KEY',
-                'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS',
-                'TRIPAY_API_KEY', 'TRIPAY_PRIVATE_KEY', 'TRIPAY_MERCHANT_CODE', 'TRIPAY_MODE'
-            ];
-            foreach ($allowed as $k) {
-                if (isset($_POST[$k])) {
-                    $v = trim((string)$_POST[$k]);
-                    if ($v !== '') {
-                        $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)', [$k, $v, $nowIso]);
-                    }
-                }
-            }
-            $message = 'Pengaturan API Provider, Telegram, dan Tripay berhasil disimpan!';
+            throw new Exception('Pengubahan kunci API & secret gateway melalui web telah dikunci permanen demi keamanan server. Silakan edit file .env di server hosting Anda.');
         } elseif ($action === 'toggle_provider') {
             $provId = $_POST['provider_id'] ?? '';
             $newStatus = (int)($_POST['new_status'] ?? 0);
@@ -342,21 +284,36 @@ try {
     }
 } catch (\Throwable) {}
 
-$openrouterKey = $settingsRows['OPENROUTER_API_KEY'] ?? (string)$config->get('OPENROUTER_API_KEY', '');
-$openaiKey = $settingsRows['OPENAI_API_KEY'] ?? (string)$config->get('OPENAI_API_KEY', '');
-$groqKey = $settingsRows['GROQ_API_KEY'] ?? (string)$config->get('GROQ_API_KEY', '');
-$deepseekKey = $settingsRows['DEEPSEEK_API_KEY'] ?? (string)$config->get('DEEPSEEK_API_KEY', '');
-$geminiKey = $settingsRows['GEMINI_API_KEY'] ?? (string)$config->get('GEMINI_API_KEY', '');
-$mistralKey = $settingsRows['MISTRAL_API_KEY'] ?? (string)$config->get('MISTRAL_API_KEY', '');
-$customBaseUrl = $settingsRows['CUSTOM_PROVIDER_BASE_URL'] ?? (string)$config->get('CUSTOM_PROVIDER_BASE_URL', '');
-$customKey = $settingsRows['CUSTOM_PROVIDER_API_KEY'] ?? (string)$config->get('CUSTOM_PROVIDER_API_KEY', '');
+$openrouterKey = (string)$config->get('OPENROUTER_API_KEY', '');
+$openaiKey = (string)$config->get('OPENAI_API_KEY', '');
+$groqKey = (string)$config->get('GROQ_API_KEY', '');
+$deepseekKey = (string)$config->get('DEEPSEEK_API_KEY', '');
+$geminiKey = (string)$config->get('GEMINI_API_KEY', '');
+$mistralKey = (string)$config->get('MISTRAL_API_KEY', '');
+$customBaseUrl = (string)$config->get('CUSTOM_PROVIDER_BASE_URL', '');
+$customKey = (string)$config->get('CUSTOM_PROVIDER_API_KEY', '');
 
-$telegramToken = $settingsRows['TELEGRAM_BOT_TOKEN'] ?? (string)$config->get('TELEGRAM_BOT_TOKEN', '');
-$telegramAdmins = $settingsRows['TELEGRAM_ADMIN_IDS'] ?? (string)$config->get('TELEGRAM_ADMIN_IDS', '');
-$tripayApiKey = $settingsRows['TRIPAY_API_KEY'] ?? (string)$config->get('TRIPAY_API_KEY', '');
-$tripayPrivKey = $settingsRows['TRIPAY_PRIVATE_KEY'] ?? (string)$config->get('TRIPAY_PRIVATE_KEY', '');
-$tripayMerchant = $settingsRows['TRIPAY_MERCHANT_CODE'] ?? (string)$config->get('TRIPAY_MERCHANT_CODE', '');
-$tripayMode = $settingsRows['TRIPAY_MODE'] ?? (string)$config->get('TRIPAY_MODE', 'sandbox');
+$telegramToken = (string)$config->get('TELEGRAM_BOT_TOKEN', '');
+$telegramAdmins = (string)$config->get('TELEGRAM_ADMIN_IDS', '');
+$tripayApiKey = (string)$config->get('TRIPAY_API_KEY', '');
+$tripayPrivKey = (string)$config->get('TRIPAY_PRIVATE_KEY', '');
+$tripayMerchant = (string)$config->get('TRIPAY_MERCHANT_CODE', '');
+$tripayMode = (string)$config->get('TRIPAY_MODE', 'sandbox');
+
+$duitkuApiKey = (string)$config->get('DUITKU_API_KEY', '');
+$duitkuMerchant = (string)$config->get('DUITKU_MERCHANT_CODE', '');
+$duitkuMode = (string)$config->get('DUITKU_MODE', 'sandbox');
+$duitkuCallback = (string)$config->get('DUITKU_CALLBACK_URL', 'https://ciptaone.com/api/v1/webhooks/duitku');
+
+$manualBankName = (string)$config->get('MANUAL_BANK_NAME', 'BCA / Mandiri / BRI');
+$manualAccountNo = (string)$config->get('MANUAL_ACCOUNT_NO', '1234567890');
+$manualAccountHolder = (string)$config->get('MANUAL_ACCOUNT_HOLDER', 'AI Ciptaone Router');
+$manualQrisUrl = (string)$config->get('MANUAL_QRIS_IMAGE_URL', '');
+
+$maxDailyCredits = (int)$config->get('MAX_DAILY_AI_CREDITS', 500000);
+$todayStart = gmdate('Y-m-d 00:00:00');
+$todayUsageRow = $db->fetchOne("SELECT COALESCE(SUM(billed_credits), 0) AS total_today FROM usage_events WHERE created_at >= ? AND status = 'success'", [$todayStart]);
+$totalBilledToday = (int)($todayUsageRow['total_today'] ?? 0);
 
 $providers = $db->fetchAll('SELECT * FROM providers ORDER BY enabled DESC, display_name ASC');
 $models = $db->fetchAll('SELECT m.*, p.slug as provider_slug FROM models m JOIN providers p ON m.provider_id = p.id ORDER BY m.public_id ASC');
@@ -531,278 +488,247 @@ $activeTab = $_GET['tab'] ?? 'settings';
         </div>
 
         <!-- ========================================== -->
-        <!-- TAB 1: SETTINGS                            -->
+        <!-- TAB 1: SECURITY & CREDENTIALS (.env)       -->
         <!-- ========================================== -->
         <?php if ($activeTab === 'settings'): ?>
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-4xl space-y-8 shadow-xl">
-                <div>
-                    <h2 class="text-xl font-bold text-white flex items-center space-x-2">
-                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span>Konfigurasi Provider & Payment Gateway</span>
-                    </h2>
-                    <p class="text-xs text-slate-400 mt-1.5">
-                        Kunci API disimpan secara terenkripsi dalam database. Sistem tidak pernah mengekspos kunci ini ke sisi browser klien pengguna.
+            <div class="max-w-5xl space-y-8">
+                <!-- Security Shield Notice Banner -->
+                <div class="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900 to-indigo-950/60 border border-emerald-500/30 shadow-xl space-y-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                                <span>Perlindungan Tingkat Tinggi: Kredensial Terkunci di .env</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Hardened</span>
+                            </h2>
+                            <p class="text-xs text-slate-300 mt-0.5">
+                                Kunci API Provider AI, Secret Gateway Pembayaran, dan Nomor Rekening dikunci permanen pada file server <code class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 font-mono text-emerald-400">.env</code>.
+                            </p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed pl-13">
+                        Kredensial <strong>tidak disimpan di form database web</strong> dan tidak dapat diubah oleh siapapun melalui browser. Ini menjamin keamanan dari kebocoran kunci, pembajakan nomor rekening tujuan transaksi, maupun serangan injeksi web.
                     </p>
                 </div>
 
-                <form method="POST" class="space-y-6">
-                    <input type="hidden" name="admin_action" value="save_settings">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
-
-                    <!-- Provider 1: OpenRouter -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">1. OpenRouter API Key</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $openrouterKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $openrouterKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo $openrouterKey ? 'Aktif (' . substr($openrouterKey, 0, 8) . '••••••••' . substr($openrouterKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">Menyediakan akses ratusan model open-source (LLaMA 3, DeepSeek Chat/Coder, Qwen, Mistral) via satu upstream.</p>
-                        <input type="password" name="OPENROUTER_API_KEY" placeholder="<?php echo $openrouterKey ? 'Masukkan kunci baru untuk mengganti...' : 'sk-or-v1-xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                    </div>
-
-                    <!-- Provider 2: OpenAI -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">2. OpenAI Official API Key</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $openaiKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $openaiKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo $openaiKey ? 'Aktif (' . substr($openaiKey, 0, 7) . '••••••••' . substr($openaiKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">Dibutuhkan untuk upstream model resmi OpenAI (GPT-4o, GPT-4o-mini).</p>
-                        <input type="password" name="OPENAI_API_KEY" placeholder="<?php echo $openaiKey ? 'Masukkan kunci baru untuk mengganti...' : 'sk-proj-xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                    </div>
-
-                    <!-- Provider 3: Groq Cloud (LPU Ultra-Fast) -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">3. Groq Cloud (LPU Ultra-Fast) API Key</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $groqKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $groqKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo $groqKey ? 'Aktif (' . substr($groqKey, 0, 7) . '••••••••' . substr($groqKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">Inference kecepatan kilat 500+ token/detik untuk LLaMA 3.3 70B & DeepSeek R1 Distill via Groq LPU.</p>
-                        <input type="password" name="GROQ_API_KEY" placeholder="<?php echo $groqKey ? 'Masukkan kunci baru untuk mengganti...' : 'gsk_xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                    </div>
-
-                    <!-- Provider 4: DeepSeek Direct -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">4. DeepSeek Direct API Key</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $deepseekKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $deepseekKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo $deepseekKey ? 'Aktif (' . substr($deepseekKey, 0, 7) . '••••••••' . substr($deepseekKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">Koneksi langsung ke DeepSeek V3 (Chat) & R1 (Reasoner) dengan harga termurah di dunia via api.deepseek.com.</p>
-                        <input type="password" name="DEEPSEEK_API_KEY" placeholder="<?php echo $deepseekKey ? 'Masukkan kunci baru untuk mengganti...' : 'sk-xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                    </div>
-
-                    <!-- Provider 5: Google Gemini Direct -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">5. Google Gemini API Key</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $geminiKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $geminiKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo $geminiKey ? 'Aktif (' . substr($geminiKey, 0, 7) . '••••••••' . substr($geminiKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">Akses resmi Google AI Studio (Gemini 2.0 Flash, Gemini 1.5 Pro) menggunakan endpoint OpenAI-compatible resmi Google.</p>
-                        <input type="password" name="GEMINI_API_KEY" placeholder="<?php echo $geminiKey ? 'Masukkan kunci baru untuk mengganti...' : 'AIzaSyxxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                    </div>
-
-                    <!-- Provider 6: Mistral AI Direct -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">6. Mistral AI Direct API Key</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $mistralKey ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $mistralKey ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo $mistralKey ? 'Aktif (' . substr($mistralKey, 0, 7) . '••••••••' . substr($mistralKey, -4) . ')' : 'Belum Dikonfigurasi'; ?></span>
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">Akses model resmi Mistral Large, Codestral, dan Ministral via api.mistral.ai.</p>
-                        <input type="password" name="MISTRAL_API_KEY" placeholder="<?php echo $mistralKey ? 'Masukkan kunci baru untuk mengganti...' : 'xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                    </div>
-
-                    <!-- Provider 7: Custom / Self-Hosted OpenAI Endpoint (Ollama / vLLM) -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">7. Custom / Local AI Endpoint (Ollama / vLLM / LM Studio)</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $customBaseUrl ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $customBaseUrl ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo $customBaseUrl ? 'Terkonfigurasi' : 'Belum Diisi'; ?></span>
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">Hubungkan router ke server AI lokal milik sendiri atau provider custom manapun yang kompatibel dengan format OpenAI.</p>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-300 mb-1">Base URL Endpoint</label>
-                                <input type="text" name="CUSTOM_PROVIDER_BASE_URL" value="<?php echo htmlspecialchars($customBaseUrl); ?>" placeholder="http://localhost:11434/v1" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-300 mb-1">API Key (Opsional / Dummy jika lokal)</label>
-                                <input type="password" name="CUSTOM_PROVIDER_API_KEY" placeholder="<?php echo $customKey ? '••••••••' : 'Kosongkan jika Ollama lokal'; ?>" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Provider 3: Telegram Bot -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">3. Telegram Bot Notifier & Customer Bot</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo $telegramToken ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo $telegramToken ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo $telegramToken ? 'Terkonfigurasi' : 'Belum Diisi'; ?></span>
-                            </span>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-300 mb-1">Bot Token</label>
-                                <input type="password" name="TELEGRAM_BOT_TOKEN" placeholder="<?php echo $telegramToken ? '••••••••' : '123456789:ABCdefGhIJKlmNoPQRstuVWxYz'; ?>" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-300 mb-1">Telegram Admin IDs (koma-terpisah)</label>
-                                <input type="text" name="TELEGRAM_ADMIN_IDS" value="<?php echo htmlspecialchars($telegramAdmins); ?>" placeholder="Contoh: 12345678,98765432" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Provider 4: Tripay Payment Gateway -->
-                    <div class="p-5 rounded-xl border border-slate-800 bg-slate-950/60 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                                    </svg>
-                                </div>
-                                <span class="font-bold text-sm text-white">4. Tripay Payment Gateway (QRIS Dinamis Otomatis)</span>
-                            </div>
-
-                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold <?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                <span class="w-1.5 h-1.5 rounded-full <?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                <span><?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'Siap Pakai (' . strtoupper($tripayMode) . ')' : 'Belum Lengkap'; ?></span>
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400">Memungkinkan pelanggan membeli saldo instan via QRIS di Telegram/Mobile/Web dengan verifikasi callback otomatis 3 detik.</p>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-300 mb-1">Merchant Code</label>
-                                <input type="text" name="TRIPAY_MERCHANT_CODE" value="<?php echo htmlspecialchars($tripayMerchant); ?>" placeholder="Contoh: T12345" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-300 mb-1">Environment Mode</label>
-                                <select name="TRIPAY_MODE" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-semibold">
-                                    <option value="sandbox" <?php echo $tripayMode === 'sandbox' ? 'selected' : ''; ?>>Sandbox (Testing Mode)</option>
-                                    <option value="production" <?php echo $tripayMode === 'production' ? 'selected' : ''; ?>>Production (Live Mode)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">API Key</label>
-                            <input type="password" name="TRIPAY_API_KEY" placeholder="<?php echo $tripayApiKey ? '••••••••' . substr($tripayApiKey, -4) : 'DEV-xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Private Key (Secret Key Callback)</label>
-                            <input type="password" name="TRIPAY_PRIVATE_KEY" placeholder="<?php echo $tripayPrivKey ? '••••••••' . substr($tripayPrivKey, -4) : 'xxxxxxxxxxxxxxxxxxxx'; ?>" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-900 text-slate-100 font-mono placeholder:text-slate-600">
-                        </div>
-
-                        <div class="p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300 space-y-1">
-                            <span class="font-bold flex items-center space-x-1.5">
-                                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                <!-- Financial Circuit Breaker (Rem Darurat Pengeluaran AI) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
-                                <span>URL Callback Webhook untuk Dashboard Tripay:</span>
-                            </span>
-                            <code class="block font-mono bg-slate-950 px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-200 select-all font-semibold">https://ciptaone.com/api/v1/webhooks/tripay</code>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-white">Circuit Breaker (Rem Darurat Tagihan AI Harian)</h3>
+                                <p class="text-[11px] text-slate-400">Mencegah lonjakan tagihan tak terduga dengan membatasi total kredit harian seluruh sistem.</p>
+                            </div>
                         </div>
+
+                        <?php 
+                            $isCircuitTripped = ($maxDailyCredits > 0 && $totalBilledToday >= $maxDailyCredits);
+                            $usagePercent = ($maxDailyCredits > 0) ? min(100, round(($totalBilledToday / $maxDailyCredits) * 100, 1)) : 0;
+                        ?>
+                        <span class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold <?php echo $isCircuitTripped ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'; ?>">
+                            <span class="w-2 h-2 rounded-full <?php echo $isCircuitTripped ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'; ?>"></span>
+                            <span><?php echo $isCircuitTripped ? 'TERKUNCI (Batas Harian Tercapai)' : 'NORMAL / AKTIF'; ?></span>
+                        </span>
                     </div>
 
-                    <!-- Submit Button -->
-                    <div class="pt-2">
-                        <button type="submit" class="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                            </svg>
-                            <span>Simpan Semua Pengaturan</span>
-                        </button>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                            <span class="text-slate-400 block mb-1">Batas Maksimal Harian (.env)</span>
+                            <span class="text-sm font-bold text-white font-mono"><?php echo $maxDailyCredits > 0 ? number_format($maxDailyCredits, 0, ',', '.') . ' Kredit' : 'Tidak Dibatasi'; ?></span>
+                            <span class="text-[10px] text-slate-500 block mt-0.5"><?php echo $maxDailyCredits > 0 ? '(~Rp ' . number_format($maxDailyCredits, 0, ',', '.') . ' / hari)' : 'Unlimited'; ?></span>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                            <span class="text-slate-400 block mb-1">Terpakai Hari Ini (00:00 UTC)</span>
+                            <span class="text-sm font-bold font-mono <?php echo $isCircuitTripped ? 'text-rose-400' : 'text-emerald-400'; ?>"><?php echo number_format($totalBilledToday, 0, ',', '.'); ?> Kredit</span>
+                            <span class="text-[10px] text-slate-500 block mt-0.5">(Rp <?php echo number_format($totalBilledToday, 0, ',', '.'); ?>)</span>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+                            <span class="text-slate-400 block mb-1">Persentase Kuota Hari Ini</span>
+                            <span class="text-sm font-bold text-white font-mono"><?php echo $usagePercent; ?>%</span>
+                            <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                                <div class="h-full rounded-full <?php echo $usagePercent > 85 ? 'bg-rose-500' : ($usagePercent > 50 ? 'bg-amber-400' : 'bg-emerald-500'); ?>" style="width: <?php echo $usagePercent; ?>%"></div>
+                            </div>
+                        </div>
                     </div>
-                </form>
+                </div>
+
+                <!-- Upstream AI Providers (.env Status) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                    <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <span>Status Kredensial AI Provider (Terkunci di .env)</span>
+                    </h3>
+
+                    <?php
+                    $providerList = [
+                        ['name' => 'OpenRouter (Aggregator 200+ Model)', 'env' => 'OPENROUTER_API_KEY', 'val' => $openrouterKey, 'desc' => 'LLaMA 3, DeepSeek Chat/Coder, Qwen, Mistral via openrouter.ai'],
+                        ['name' => 'OpenAI Official API', 'env' => 'OPENAI_API_KEY', 'val' => $openaiKey, 'desc' => 'GPT-4o, GPT-4o-mini via api.openai.com'],
+                        ['name' => 'Groq Cloud (LPU Ultra-Fast)', 'env' => 'GROQ_API_KEY', 'val' => $groqKey, 'desc' => 'Inference ultra-cepat 500+ tok/s untuk LLaMA 3.3 via api.groq.com'],
+                        ['name' => 'DeepSeek Direct API', 'env' => 'DEEPSEEK_API_KEY', 'val' => $deepseekKey, 'desc' => 'Koneksi langsung ke DeepSeek V3 & R1 via api.deepseek.com'],
+                        ['name' => 'Google Gemini (Official)', 'env' => 'GEMINI_API_KEY', 'val' => $geminiKey, 'desc' => 'Gemini 2.0 Flash & Gemini 1.5 Pro via Google AI Studio'],
+                        ['name' => 'Mistral AI Direct', 'env' => 'MISTRAL_API_KEY', 'val' => $mistralKey, 'desc' => 'Mistral Large & Codestral via api.mistral.ai'],
+                    ];
+                    ?>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <?php foreach ($providerList as $p): ?>
+                            <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-xs text-white"><?php echo htmlspecialchars($p['name']); ?></span>
+                                    <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold <?php echo $p['val'] ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                        <span class="w-1.5 h-1.5 rounded-full <?php echo $p['val'] ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                        <span><?php echo $p['val'] ? 'Terkonfigurasi di .env' : 'Belum Disetel'; ?></span>
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-400"><?php echo htmlspecialchars($p['desc']); ?></p>
+                                <div class="pt-1 flex items-center justify-between text-[11px] font-mono">
+                                    <span class="text-slate-500">Key: <?php echo htmlspecialchars($p['env']); ?></span>
+                                    <?php if ($p['val']): ?>
+                                        <span class="text-emerald-400 font-bold"><?php echo substr($p['val'], 0, 4) . '••••••••' . substr($p['val'], -4); ?></span>
+                                    <?php else: ?>
+                                        <span class="text-slate-600 italic">kosong</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Payment Gateways & Banking (.env Status) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                    <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        <span>Status Gateway Pembayaran & Rekening Penampung (Terkunci di .env)</span>
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Tripay Card -->
+                        <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-xs text-white">Tripay (Closed Dynamic QRIS)</span>
+                                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold <?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                    <span class="w-1.5 h-1.5 rounded-full <?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                    <span><?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'Siap Pakai (' . strtoupper($tripayMode) . ')' : 'Belum Lengkap'; ?></span>
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">QRIS Dinamis otomatis dengan verifikasi signature callback HMAC-SHA256.</p>
+                            <div class="space-y-1 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">TRIPAY_MERCHANT_CODE:</span>
+                                    <span class="text-white"><?php echo $tripayMerchant ? htmlspecialchars($tripayMerchant) : '<span class="text-slate-600">belum diisi</span>'; ?></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">TRIPAY_PRIVATE_KEY:</span>
+                                    <span class="text-emerald-400"><?php echo $tripayPrivKey ? '••••••••' . substr($tripayPrivKey, -4) : '<span class="text-slate-600">belum diisi</span>'; ?></span>
+                                </div>
+                            </div>
+                            <div class="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-[10px] space-y-0.5">
+                                <span class="text-slate-400 font-sans block">URL Webhook Callback Tripay:</span>
+                                <code class="text-indigo-400 font-mono select-all block">https://ciptaone.com/api/v1/webhooks/tripay</code>
+                            </div>
+                        </div>
+
+                        <!-- Duitku Card -->
+                        <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-xs text-white">Duitku (Full Service: QRIS & VA)</span>
+                                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold <?php echo ($duitkuApiKey && $duitkuMerchant) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                    <span class="w-1.5 h-1.5 rounded-full <?php echo ($duitkuApiKey && $duitkuMerchant) ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                    <span><?php echo ($duitkuApiKey && $duitkuMerchant) ? 'Siap Pakai (' . strtoupper($duitkuMode) . ')' : 'Belum Lengkap'; ?></span>
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Pembayaran resmi berlisensi Bank Indonesia via QRIS & Virtual Account bank.</p>
+                            <div class="space-y-1 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">DUITKU_MERCHANT_CODE:</span>
+                                    <span class="text-white"><?php echo $duitkuMerchant ? htmlspecialchars($duitkuMerchant) : '<span class="text-slate-600">belum diisi</span>'; ?></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">DUITKU_API_KEY:</span>
+                                    <span class="text-emerald-400"><?php echo $duitkuApiKey ? '••••••••' . substr($duitkuApiKey, -4) : '<span class="text-slate-600">belum diisi</span>'; ?></span>
+                                </div>
+                            </div>
+                            <div class="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-[10px] space-y-0.5">
+                                <span class="text-slate-400 font-sans block">URL Webhook Callback Duitku:</span>
+                                <code class="text-emerald-400 font-mono select-all block">https://ciptaone.com/api/v1/webhooks/duitku</code>
+                            </div>
+                        </div>
+
+                        <!-- Rekening Bank Manual -->
+                        <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-xs text-white">Rekening Bank Manual (Transfer)</span>
+                                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    <span>Terkunci di .env</span>
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Rekening tujuan transfer manual. Kredit hanya bertambah jika Anda menekan Setujui.</p>
+                            <div class="space-y-1 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">MANUAL_BANK_NAME:</span>
+                                    <span class="text-white font-bold"><?php echo htmlspecialchars($manualBankName); ?></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">MANUAL_ACCOUNT_NO:</span>
+                                    <span class="text-amber-400 font-bold"><?php echo htmlspecialchars($manualAccountNo); ?></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">MANUAL_ACCOUNT_HOLDER:</span>
+                                    <span class="text-white"><?php echo htmlspecialchars($manualAccountHolder); ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Telegram Bot -->
+                        <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-xs text-white">Bot Telegram Admin & Notifier</span>
+                                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold <?php echo $telegramToken ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
+                                    <span class="w-1.5 h-1.5 rounded-full <?php echo $telegramToken ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
+                                    <span><?php echo $telegramToken ? 'Terkonfigurasi' : 'Belum Diisi'; ?></span>
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Mengirimkan notifikasi invoice top-up & tombol persetujuan admin via Telegram pribadi.</p>
+                            <div class="space-y-1 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">TELEGRAM_BOT_TOKEN:</span>
+                                    <span class="text-emerald-400"><?php echo $telegramToken ? '••••••••' . substr($telegramToken, -4) : '<span class="text-slate-600">kosong</span>'; ?></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">TELEGRAM_ADMIN_IDS:</span>
+                                    <span class="text-white"><?php echo $telegramAdmins ? htmlspecialchars($telegramAdmins) : '<span class="text-slate-600">kosong</span>'; ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- How to edit credentials guide -->
+                <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-2">
+                    <p class="font-bold text-slate-200 flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Cara Mengedit atau Menambah Kunci (.env Server):</span>
+                    </p>
+                    <p class="text-slate-400 leading-relaxed">
+                        Buka file <code class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-emerald-400 font-mono">.env</code> di root hosting atau folder <code class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-emerald-400 font-mono">php-backend/.env</code> melalui cPanel File Manager / SSH terminal. Simpan perubahan, dan konfigurasi baru akan otomatis aktif seketika tanpa perlu restart.
+                    </p>
+                </div>
             </div>
 
         <!-- ========================================== -->

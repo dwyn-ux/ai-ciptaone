@@ -10,6 +10,7 @@ use Ciptaone\Core\ErrorCode;
 use Ciptaone\Core\Security;
 use Ciptaone\Services\PaymentAdapters\BasePaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
+use Ciptaone\Services\PaymentAdapters\DuitkuPaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\ManualPaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\TripayPaymentAdapter;
 
@@ -28,6 +29,7 @@ class TopupService
     private ManualPaymentAdapter $manualQrisAdapter;
     private DanaPaymentAdapter $danaAdapter;
     private TripayPaymentAdapter $tripayAdapter;
+    private DuitkuPaymentAdapter $duitkuAdapter;
 
     public function __construct(
         ?Database $db = null,
@@ -35,7 +37,8 @@ class TopupService
         ?WalletService $walletService = null,
         ?TelegramBotService $telegramBot = null,
         ?AuditService $auditService = null,
-        ?TripayPaymentAdapter $tripayAdapter = null
+        ?TripayPaymentAdapter $tripayAdapter = null,
+        ?DuitkuPaymentAdapter $duitkuAdapter = null
     ) {
         $this->db = $db ?? Database::getInstance();
         $this->config = $config ?? Config::getInstance();
@@ -47,6 +50,7 @@ class TopupService
         $this->manualQrisAdapter = new ManualPaymentAdapter('manual_qris', $this->config);
         $this->danaAdapter = new DanaPaymentAdapter($this->config);
         $this->tripayAdapter = $tripayAdapter ?? new TripayPaymentAdapter(null, $this->config, $this->db);
+        $this->duitkuAdapter = $duitkuAdapter ?? new DuitkuPaymentAdapter(null, $this->config, $this->db);
     }
 
     public function getAdapter(string $paymentMethod): BasePaymentAdapter
@@ -56,6 +60,7 @@ class TopupService
             'manual_qris' => $this->manualQrisAdapter,
             'dana_qris_dynamic' => $this->danaAdapter,
             'tripay_qris' => $this->tripayAdapter,
+            'duitku', 'duitku_qris' => $this->duitkuAdapter,
             default => throw new AppError(
                 ErrorCode::INVALID_REQUEST,
                 "Metode pembayaran '{$paymentMethod}' tidak valid.",
