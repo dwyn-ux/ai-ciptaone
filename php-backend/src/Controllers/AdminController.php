@@ -103,6 +103,21 @@ class AdminController extends BaseController
             $updates[] = 'max_output_tokens = ?';
             $sqlParams[] = (int)$body['max_output_tokens'];
         }
+        if (!empty($body['public_id'])) {
+            $updates[] = 'public_id = ?';
+            $sqlParams[] = trim((string)$body['public_id']);
+        }
+        if (array_key_exists('upstream_model', $body)) {
+            $updates[] = 'upstream_model = ?';
+            $sqlParams[] = trim((string)$body['upstream_model']);
+        }
+        if (!empty($body['provider_slug'])) {
+            $prov = $this->db->fetchOne('SELECT id FROM providers WHERE slug = ?', [$body['provider_slug']]);
+            if ($prov) {
+                $updates[] = 'provider_id = ?';
+                $sqlParams[] = $prov['id'];
+            }
+        }
 
         if (empty($updates)) {
             Response::json(['status' => 'unchanged']);

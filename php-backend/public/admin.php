@@ -255,6 +255,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action !== 'admin_login') {
             $outPrice = (int)$_POST['output_price_per_million'];
             $db->execute('UPDATE models SET input_price_per_million = ?, output_price_per_million = ?, pricing_version = pricing_version + 1, updated_at = ? WHERE id = ? OR public_id = ?', [$inPrice, $outPrice, gmdate('Y-m-d H:i:s'), $modelId, $modelId]);
             $message = 'Tarif model berhasil diperbarui!';
+        } elseif ($action === 'edit_model') {
+            $modelId = $_POST['model_id'] ?? '';
+            $publicId = trim($_POST['public_id'] ?? '');
+            $providerSlug = trim($_POST['provider_slug'] ?? '');
+            $upstream = trim($_POST['upstream_model'] ?? '') ?: $publicId;
+            $inPrice = (int)($_POST['input_price_per_million'] ?? 15000);
+            $outPrice = (int)($_POST['output_price_per_million'] ?? 30000);
+            $maxInput = (int)($_POST['max_input_tokens'] ?? 8192);
+            $maxOutput = (int)($_POST['max_output_tokens'] ?? 4096);
+            $enabled = isset($_POST['enabled']) ? 1 : 0;
+
+            if ($publicId === '') throw new Exception("Public Model ID tidak boleh kosong.");
+
+            $prov = $db->fetchOne('SELECT id FROM providers WHERE slug = ?', [$providerSlug]);
+            if (!$prov) throw new Exception("Provider '{$providerSlug}' tidak ditemukan.");
+
+            $nowIso = gmdate('Y-m-d H:i:s');
+            $db->execute(
+                'UPDATE models SET 
+                    public_id = ?, 
+                    provider_id = ?, 
+                    upstream_model = ?, 
+                    input_price_per_million = ?, 
+                    output_price_per_million = ?, 
+                    max_input_tokens = ?, 
+                    max_output_tokens = ?, 
+                    enabled = ?, 
+                    pricing_version = pricing_version + 1, 
+                    updated_at = ? 
+                 WHERE id = ? OR public_id = ?',
+                [$publicId, $prov['id'], $upstream, $inPrice, $outPrice, $maxInput, $maxOutput, $enabled, $nowIso, $modelId, $modelId]
+            );
+
+            $auditService->logAction($adminId, 'edit_model', 'model', $modelId, [
+                'public_id' => $publicId,
+                'upstream_model' => $upstream,
+                'input_price' => $inPrice,
+                'output_price' => $outPrice,
+            ]);
+
+            $message = "Model '{$publicId}' berhasil diperbarui!";
+            $messageType = 'success';
         } elseif ($action === 'review_topup') {
             $orderId = $_POST['order_id'] ?? '';
             $decision = $_POST['decision'] ?? 'paid';
@@ -843,6 +885,13 @@ $activeTab = $_GET['tab'] ?? 'settings';
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                        <button type="button" onclick='openEditModelModal(<?php echo htmlspecialchars(json_encode($m), ENT_QUOTES, "UTF-8"); ?>)' class="inline-flex items-center space-x-1 px-3 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition" title="Edit konfigurasi model & tarif">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            <span>Edit</span>
+                                        </button>
+
                                         <form method="POST" class="inline">
                                             <input type="hidden" name="admin_action" value="test_model">
                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
@@ -873,6 +922,109 @@ $activeTab = $_GET['tab'] ?? 'settings';
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Modal Edit Model -->
+                <div id="editModelModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-5 animate-in fade-in duration-200">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                <span>Edit Konfigurasi & Tarif Model</span>
+                            </h3>
+                            <button type="button" onclick="closeEditModelModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form method="POST" class="space-y-4 text-xs">
+                            <input type="hidden" name="admin_action" value="edit_model">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($adminCsrfToken); ?>">
+                            <input type="hidden" name="model_id" id="edit_model_id">
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold text-slate-300 uppercase mb-1">Public Model ID</label>
+                                    <input type="text" name="public_id" id="edit_public_id" required class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-300 uppercase mb-1">Provider AI</label>
+                                    <select name="provider_slug" id="edit_provider_slug" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                        <?php foreach ($providers as $prov): ?>
+                                            <option value="<?php echo htmlspecialchars($prov['slug']); ?>">
+                                                <?php echo htmlspecialchars($prov['display_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block font-bold text-slate-300 uppercase mb-1">Upstream Model Name (Target Provider)</label>
+                                <input type="text" name="upstream_model" id="edit_upstream_model" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold text-slate-300 uppercase mb-1">Tarif Input / 1M Token (Rp)</label>
+                                    <input type="number" name="input_price_per_million" id="edit_input_price" required class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-300 uppercase mb-1">Tarif Output / 1M Token (Rp)</label>
+                                    <input type="number" name="output_price_per_million" id="edit_output_price" required class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold text-slate-300 uppercase mb-1">Max Input Tokens</label>
+                                    <input type="number" name="max_input_tokens" id="edit_max_input_tokens" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-300 uppercase mb-1">Max Output Tokens</label>
+                                    <input type="number" name="max_output_tokens" id="edit_max_output_tokens" class="w-full px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-950 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center space-x-3">
+                                <input type="checkbox" name="enabled" id="edit_enabled" value="1" class="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-slate-900 border-slate-700">
+                                <label for="edit_enabled" class="text-slate-300 font-semibold cursor-pointer">Status Model Aktif / Online (Dapat Dipanggil Pengguna)</label>
+                            </div>
+
+                            <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
+                                <button type="button" onclick="closeEditModelModal()" class="px-4 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 font-bold transition">
+                                    Batal
+                                </button>
+                                <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-500/20 transition">
+                                    Simpan Perubahan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <script>
+                function openEditModelModal(model) {
+                    document.getElementById('edit_model_id').value = model.id;
+                    document.getElementById('edit_public_id').value = model.public_id;
+                    document.getElementById('edit_provider_slug').value = model.provider_slug;
+                    document.getElementById('edit_upstream_model').value = model.upstream_model || model.public_id;
+                    document.getElementById('edit_input_price').value = model.input_price_per_million;
+                    document.getElementById('edit_output_price').value = model.output_price_per_million;
+                    document.getElementById('edit_max_input_tokens').value = model.max_input_tokens || 8192;
+                    document.getElementById('edit_max_output_tokens').value = model.max_output_tokens || 4096;
+                    document.getElementById('edit_enabled').checked = (model.enabled == 1 || model.enabled === true);
+
+                    document.getElementById('editModelModal').classList.remove('hidden');
+                }
+
+                function closeEditModelModal() {
+                    document.getElementById('editModelModal').classList.add('hidden');
+                }
+                </script>
 
                 <!-- Providers Management Card -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">

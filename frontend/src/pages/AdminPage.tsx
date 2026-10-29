@@ -40,6 +40,8 @@ interface AdminModel {
   input_price_per_million: number;
   output_price_per_million: number;
   pricing_version: number;
+  max_input_tokens?: number;
+  max_output_tokens?: number;
 }
 
 interface AdminUser {
@@ -93,10 +95,15 @@ export const AdminPage: React.FC = () => {
   const [newModelInputPrice, setNewModelInputPrice] = useState(15000);
   const [newModelOutputPrice, setNewModelOutputPrice] = useState(30000);
 
-  // Edit Model Pricing modal state
+  // Edit Model modal state
   const [editingModel, setEditingModel] = useState<AdminModel | null>(null);
+  const [editPublicId, setEditPublicId] = useState("");
+  const [editUpstreamModel, setEditUpstreamModel] = useState("");
+  const [editProviderSlug, setEditProviderSlug] = useState("openrouter");
   const [editInputPrice, setEditInputPrice] = useState(0);
   const [editOutputPrice, setEditOutputPrice] = useState(0);
+  const [editMaxInput, setEditMaxInput] = useState(8192);
+  const [editMaxOutput, setEditMaxOutput] = useState(4096);
 
   // Balance adjustment modal state
   const [adjustModalUser, setAdjustModalUser] = useState<AdminUser | null>(null);
@@ -244,19 +251,24 @@ export const AdminPage: React.FC = () => {
     if (!editingModel) return;
 
     try {
-      await apiFetch(`/api/v1/admin/models/${editingModel.public_id}`, {
+      await apiFetch(`/api/v1/admin/models/${editingModel.id || editingModel.public_id}`, {
         method: "PATCH",
         body: JSON.stringify({
+          public_id: editPublicId.trim() || editingModel.public_id,
+          upstream_model: editUpstreamModel.trim() || editPublicId.trim() || editingModel.public_id,
+          provider_slug: editProviderSlug,
           input_price_per_million: editInputPrice,
           output_price_per_million: editOutputPrice,
+          max_input_tokens: editMaxInput,
+          max_output_tokens: editMaxOutput,
         }),
       });
 
-      alert(`Tarif model ${editingModel.public_id} berhasil diperbarui!`);
+      alert(`Model ${editPublicId || editingModel.public_id} berhasil diperbarui!`);
       setEditingModel(null);
       await loadData();
     } catch (err: any) {
-      alert(err.message || "Gagal memperbarui tarif model.");
+      alert(err.message || "Gagal memperbarui model.");
     }
   };
 
@@ -615,12 +627,17 @@ export const AdminPage: React.FC = () => {
                         <button
                           onClick={() => {
                             setEditingModel(m);
+                            setEditPublicId(m.public_id);
+                            setEditUpstreamModel(m.upstream_model || m.public_id);
+                            setEditProviderSlug(m.provider_slug || "openrouter");
                             setEditInputPrice(m.input_price_per_million);
                             setEditOutputPrice(m.output_price_per_million);
+                            setEditMaxInput(m.max_input_tokens || 8192);
+                            setEditMaxOutput(m.max_output_tokens || 4096);
                           }}
                           className="px-2.5 py-1 text-slate-600 hover:text-indigo-600 font-semibold rounded-lg hover:bg-slate-100 border border-slate-200"
                         >
-                          Ubah Tarif
+                          Edit
                         </button>
                         <button
                           onClick={() => handleToggleModel(m.public_id, m.enabled)}
@@ -818,55 +835,132 @@ export const AdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Ubah Tarif Model */}
+      {/* Modal: Edit Model AI */}
       {editingModel && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200">
             <form onSubmit={handleUpdateModelPricing} className="space-y-4">
-              <h3 className="text-lg font-bold text-slate-900">Ubah Tarif Model AI</h3>
-              <p className="text-xs text-slate-500">
-                Model: <strong>{editingModel.public_id}</strong>
-              </p>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="text-lg font-bold text-slate-900">Edit Konfigurasi & Tarif Model</h3>
+                <button
+                  type="button"
+                  onClick={() => setEditingModel(null)}
+                  className="text-slate-400 hover:text-slate-700"
+                >
+                  ✕
+                </button>
+              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                  Tarif Input Baru (Rp / 1M token)
-                </label>
-                <input
-                  type="number"
-                  required
-                  value={editInputPrice}
-                  onChange={(e) => setEditInputPrice(parseInt(e.target.value, 10) || 0)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                    Public Model ID
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPublicId}
+                    onChange={(e) => setEditPublicId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                    Provider
+                  </label>
+                  <select
+                    value={editProviderSlug}
+                    onChange={(e) => setEditProviderSlug(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
+                  >
+                    <option value="openrouter">OpenRouter</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="groq">Groq</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="gemini">Google Gemini</option>
+                    <option value="mistral">Mistral AI</option>
+                    <option value="mock">Mock Testing</option>
+                  </select>
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
-                  Tarif Output Baru (Rp / 1M token)
+                  Upstream Model Name (Target Provider)
                 </label>
                 <input
-                  type="number"
-                  required
-                  value={editOutputPrice}
-                  onChange={(e) => setEditOutputPrice(parseInt(e.target.value, 10) || 0)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  type="text"
+                  value={editUpstreamModel}
+                  onChange={(e) => setEditUpstreamModel(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                    Tarif Input (Rp / 1M token)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={editInputPrice}
+                    onChange={(e) => setEditInputPrice(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                    Tarif Output (Rp / 1M token)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={editOutputPrice}
+                    onChange={(e) => setEditOutputPrice(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                    Max Input Tokens
+                  </label>
+                  <input
+                    type="number"
+                    value={editMaxInput}
+                    onChange={(e) => setEditMaxInput(parseInt(e.target.value, 10) || 8192)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                    Max Output Tokens
+                  </label>
+                  <input
+                    type="number"
+                    value={editMaxOutput}
+                    onChange={(e) => setEditMaxOutput(parseInt(e.target.value, 10) || 4096)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingModel(null)}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm"
                 >
-                  Simpan Tarif Baru
+                  Simpan Perubahan
                 </button>
               </div>
             </form>
