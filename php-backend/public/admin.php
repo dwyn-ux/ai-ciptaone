@@ -421,10 +421,6 @@ $customKey = (string)$config->get('CUSTOM_PROVIDER_API_KEY', '');
 
 $telegramToken = (string)$config->get('TELEGRAM_BOT_TOKEN', '');
 $telegramAdmins = (string)$config->get('TELEGRAM_ADMIN_IDS', '');
-$tripayApiKey = (string)$config->get('TRIPAY_API_KEY', '');
-$tripayPrivKey = (string)$config->get('TRIPAY_PRIVATE_KEY', '');
-$tripayMerchant = (string)$config->get('TRIPAY_MERCHANT_CODE', '');
-$tripayMode = (string)$config->get('TRIPAY_MODE', 'sandbox');
 
 $duitkuApiKey = (string)$config->get('DUITKU_API_KEY', '');
 $duitkuMerchant = (string)$config->get('DUITKU_MERCHANT_CODE', '');
@@ -750,32 +746,6 @@ $activeTab = $_GET['tab'] ?? 'settings';
                     </h3>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Tripay Card -->
-                        <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-xs text-white">Tripay (Closed Dynamic QRIS)</span>
-                                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold <?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'; ?>">
-                                    <span class="w-1.5 h-1.5 rounded-full <?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'bg-emerald-400' : 'bg-slate-500'; ?>"></span>
-                                    <span><?php echo ($tripayApiKey && $tripayPrivKey && $tripayMerchant) ? 'Siap Pakai (' . strtoupper($tripayMode) . ')' : 'Belum Lengkap'; ?></span>
-                                </span>
-                            </div>
-                            <p class="text-[11px] text-slate-400">QRIS Dinamis otomatis dengan verifikasi signature callback HMAC-SHA256.</p>
-                            <div class="space-y-1 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
-                                <div class="flex justify-between">
-                                    <span class="text-slate-500">TRIPAY_MERCHANT_CODE:</span>
-                                    <span class="text-white"><?php echo $tripayMerchant ? htmlspecialchars($tripayMerchant) : '<span class="text-slate-600">belum diisi</span>'; ?></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-slate-500">TRIPAY_PRIVATE_KEY:</span>
-                                    <span class="text-emerald-400"><?php echo $tripayPrivKey ? '••••••••' . substr($tripayPrivKey, -4) : '<span class="text-slate-600">belum diisi</span>'; ?></span>
-                                </div>
-                            </div>
-                            <div class="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-[10px] space-y-0.5">
-                                <span class="text-slate-400 font-sans block">URL Webhook Callback Tripay:</span>
-                                <code class="text-indigo-400 font-mono select-all block">https://ciptaone.com/api/v1/webhooks/tripay</code>
-                            </div>
-                        </div>
-
                         <!-- Duitku Card -->
                         <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3">
                             <div class="flex items-center justify-between">

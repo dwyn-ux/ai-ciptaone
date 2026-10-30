@@ -399,10 +399,6 @@ class AdminController extends BaseController
 
         $telegramToken = $this->getSettingValue('TELEGRAM_BOT_TOKEN');
         $telegramAdmins = $this->getSettingValue('TELEGRAM_ADMIN_IDS');
-        $tripayApiKey = $this->getSettingValue('TRIPAY_API_KEY');
-        $tripayPrivKey = $this->getSettingValue('TRIPAY_PRIVATE_KEY');
-        $tripayMerchant = $this->getSettingValue('TRIPAY_MERCHANT_CODE');
-        $tripayMode = $this->getSettingValue('TRIPAY_MODE') ?: 'sandbox';
 
         $duitkuApiKey = $this->getSettingValue('DUITKU_API_KEY');
         $duitkuMerchant = $this->getSettingValue('DUITKU_MERCHANT_CODE');
@@ -443,13 +439,6 @@ class AdminController extends BaseController
                 'configured' => !empty($telegramToken),
                 'admin_ids' => $telegramAdmins,
             ],
-            'tripay' => [
-                'configured' => !empty($tripayApiKey) && !empty($tripayPrivKey) && !empty($tripayMerchant),
-                'merchant_code' => $tripayMerchant,
-                'mode' => $tripayMode,
-                'masked_api_key' => !empty($tripayApiKey) ? substr($tripayApiKey, 0, 6) . '••••••••' . substr($tripayApiKey, -4) : null,
-                'masked_private_key' => !empty($tripayPrivKey) ? substr($tripayPrivKey, 0, 4) . '••••••••' . substr($tripayPrivKey, -4) : null,
-            ],
             'duitku' => [
                 'configured' => !empty($duitkuApiKey) && !empty($duitkuMerchant),
                 'merchant_code' => $duitkuMerchant,
@@ -482,7 +471,6 @@ class AdminController extends BaseController
             'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'GEMINI_API_KEY', 'MISTRAL_API_KEY',
             'CUSTOM_PROVIDER_BASE_URL', 'CUSTOM_PROVIDER_API_KEY',
             'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_IDS',
-            'TRIPAY_API_KEY', 'TRIPAY_PRIVATE_KEY', 'TRIPAY_MERCHANT_CODE', 'TRIPAY_MODE',
             'DUITKU_API_KEY', 'DUITKU_MERCHANT_CODE', 'DUITKU_MODE', 'DUITKU_CALLBACK_URL'
         ];
         $updated = [];

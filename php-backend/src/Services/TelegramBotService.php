@@ -8,7 +8,6 @@ use Ciptaone\Core\Config;
 use Ciptaone\Core\Database;
 use Ciptaone\Core\Security;
 use Ciptaone\Services\Payments\DuitkuService;
-use Ciptaone\Services\Payments\TripayService;
 
 /**
  * Telegram Bot integration:
@@ -53,7 +52,6 @@ class TelegramBotService
         $formattedAmount = number_format($amountMinor, 0, ',', '.');
         $dateStr = gmdate('d M Y, H:i') . ' UTC';
         $gatewayLabel = match (strtolower($gateway)) {
-            'tripay', 'tripay_qris' => 'Tripay (Dynamic QRIS)',
             'duitku', 'duitku_qris' => 'Duitku (QRIS / VA Bank)',
             default => strtoupper($gateway),
         };
@@ -159,15 +157,6 @@ class TelegramBotService
         $duitkuRev = (int)($duitkuRow['rev'] ?? 0);
         $duitkuCount = (int)($duitkuRow['count'] ?? 0);
 
-        $tripayRow = $db->fetchOne(
-            "SELECT COALESCE(SUM(amount_minor), 0) as rev, COUNT(*) as count
-             FROM topups
-             WHERE status = 'paid' AND payment_method LIKE 'tripay%' AND (paid_at >= ? OR updated_at >= ?)",
-            [$sinceIso, $sinceIso]
-        );
-        $tripayRev = (int)($tripayRow['rev'] ?? 0);
-        $tripayCount = (int)($tripayRow['count'] ?? 0);
-
         // 3. Token Keluar & Pemakaian AI
         $usageRow = $db->fetchOne(
             "SELECT 
@@ -218,7 +207,6 @@ class TelegramBotService
         // Format Teks Laporan
         $fmtRevenue = number_format($totalRevenue, 0, ',', '.');
         $fmtDuitkuRev = number_format($duitkuRev, 0, ',', '.');
-        $fmtTripayRev = number_format($tripayRev, 0, ',', '.');
         $fmtInTokens = number_format($inTokens, 0, ',', '.');
         $fmtOutTokens = number_format($outTokens, 0, ',', '.');
         $fmtTotalTokens = number_format($totalTokens, 0, ',', '.');
@@ -234,8 +222,7 @@ class TelegramBotService
                "💰 *UANG MASUK (REVENUE)*\n" .
                "• *Total Pemasukan:* *Rp{$fmtRevenue}*\n" .
                "• Transaksi Berhasil: *{$totalTxCount} transaksi*\n" .
-               "• Duitku (VA & QRIS): Rp{$fmtDuitkuRev} ({$duitkuCount} tx)\n" .
-               "• Tripay (QRIS Dinamis): Rp{$fmtTripayRev} ({$tripayCount} tx)\n\n" .
+               "• Duitku (VA & QRIS): Rp{$fmtDuitkuRev} ({$duitkuCount} tx)\n\n" .
                "⚡ *TOKEN KELUAR & PEMAKAIAN AI*\n" .
                "• Total Panggilan AI: *" . number_format($totalReq, 0, ',', '.') . " request*\n" .
                "• Input Tokens: *{$fmtInTokens} token*\n" .
@@ -322,7 +309,6 @@ class TelegramBotService
         Database $db,
         TopupService $topupService,
         ApiKeyService $apiKeyService,
-        ?TripayService $tripayService = null,
         ?DuitkuService $duitkuService = null,
         string $botRole = 'all'
     ): array {
@@ -333,7 +319,6 @@ class TelegramBotService
                 $db,
                 $topupService,
                 $apiKeyService,
-                $tripayService,
                 $duitkuService,
                 $botRole
             );
@@ -567,7 +552,6 @@ class TelegramBotService
         Database|callable $dbOrCallable,
         ?TopupService $topupService = null,
         ?ApiKeyService $apiKeyService = null,
-        ?TripayService $tripayService = null,
         ?DuitkuService $duitkuService = null,
         string $botRole = 'all'
     ): array {
@@ -598,7 +582,6 @@ class TelegramBotService
         $db = $dbOrCallable;
         $topupService = $topupService ?? new TopupService($db, $this->config);
         $apiKeyService = $apiKeyService ?? new ApiKeyService($db);
-        $tripay = $tripayService ?? new TripayService($this->config, $db);
         $duitku = $duitkuService ?? new DuitkuService($this->config, $db);
 
         // Auto-provision user account
@@ -745,71 +728,10 @@ class TelegramBotService
 
                 } catch (\Throwable $e) {
                     error_log("Duitku Telegram topup error: " . $e->getMessage());
-                    // Fall through to Tripay or QR Fallback
                 }
             }
 
-            // Priority 2: Tripay (if configured or fallback)
-            if ($tripay->isConfigured()) {
-                try {
-                    $dateStr = gmdate('Ymd');
-                    $orderId = 'ORD-TP-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
-
-                    $tripayData = $tripay->createQrisTransaction(
-                        $orderId,
-                        $amount,
-                        $firstName,
-                        (string)$user['email_normalized']
-                    );
-
-                    $topupId = Security::generateId('top');
-                    $nowIso = gmdate('Y-m-d H:i:s');
-                    $expiredTime = (int)($tripayData['expired_time'] ?? (time() + 900));
-                    $expiresIso = gmdate('Y-m-d H:i:s', $expiredTime);
-
-                    $db->execute(
-                        "INSERT INTO topups (
-                            id, user_id, order_id, payment_provider, payment_method,
-                            provider_reference, amount_minor, currency, credits_to_grant,
-                            status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
-                            idempotency_key, paid_at, expires_at, created_at, updated_at
-                        ) VALUES (?, ?, ?, 'tripay', 'tripay_qris', ?, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
-                        [
-                            $topupId, (string)$user['id'], $orderId,
-                            $tripayData['reference'] ?? $orderId, $amount, $amount,
-                            "topup_order_{$orderId}", $expiresIso, $nowIso, $nowIso
-                        ]
-                    );
-
-                    $formattedAmount = number_format($amount, 0, ',', '.');
-                    $caption = "🧾 *INVOICE QRIS DINAMIS*\n\n" .
-                               "• *Order ID:* `{$orderId}`\n" .
-                               "• *Nominal:* *Rp{$formattedAmount}*\n" .
-                               "• *Masa Berlaku:* 15 Menit\n\n" .
-                               "📱 *Petunjuk Pembayaran:*\n" .
-                               "1. Buka aplikasi e-Wallet atau Mobile Banking Anda (BCA, Mandiri, BRI, GoPay, OVO, Dana, ShopeePay).\n" .
-                               "2. Scan QRIS di atas dan periksa nominalnya.\n" .
-                               "3. Selesaikan pembayaran.\n\n" .
-                               "⚡ *Verifikasi Otomatis:* Saldo dan API Key Anda akan otomatis aktif dalam 3 detik setelah pembayaran berhasil.";
-
-                    $checkMarkup = [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => '🔄 Cek Status Pembayaran', 'callback_data' => "check:{$orderId}"],
-                            ]
-                        ]
-                    ];
-
-                    $this->sendPhoto($chatId, $tripayData['qr_url'], $caption, $checkMarkup);
-                    return ['status' => 'success', 'order_id' => $orderId, 'gateway' => 'tripay'];
-
-                } catch (\Throwable $e) {
-                    error_log("Tripay Telegram topup error: " . $e->getMessage());
-                    // Fall through to QR Fallback
-                }
-            }
-
-            // Priority 3: Fallback ke QRIS & Website Checkout (Seluruh pembayaran diarahkan ke QR)
+            // Priority 2: Fallback ke QRIS & Website Checkout (Seluruh pembayaran diarahkan ke QR)
             $manualQrisUrl = trim((string)$this->config->get('MANUAL_QRIS_IMAGE_URL', ''));
 
             $dateStr = gmdate('Ymd');

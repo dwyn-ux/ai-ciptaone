@@ -17,7 +17,6 @@ require_once __DIR__ . '/test_wallet_ledger.php';
 require_once __DIR__ . '/test_router_chat.php';
 require_once __DIR__ . '/test_topup_telegram.php';
 require_once __DIR__ . '/test_payment_adapters.php';
-require_once __DIR__ . '/test_tripay_payment.php';
 require_once __DIR__ . '/test_duitku_payment.php';
 require_once __DIR__ . '/test_admin_audit.php';
 require_once __DIR__ . '/test_security_csrf.php';
@@ -79,9 +78,6 @@ function run_all_tests(): array {
         },
         'Payment Adapters: Manual Transfer & DANA Deactivation Protection' => function () {
             \Ciptaone\Tests\test_payment_adapters_suite();
-        },
-        'Tripay: Dynamic QRIS, Webhook Settlement & Telegram Fulfillment' => function () use ($db) {
-            \Ciptaone\Tests\test_tripay_payment_suite($db);
         },
         'Duitku: Full Service (QRIS & VA), Signature Tampering & Webhook Settlement' => function () use ($db) {
             \Ciptaone\Tests\test_duitku_payment_suite($db);

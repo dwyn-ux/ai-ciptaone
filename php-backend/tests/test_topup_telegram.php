@@ -8,8 +8,8 @@ use Ciptaone\Core\Config;
 use Ciptaone\Core\Database;
 use Ciptaone\Services\ApiKeyService;
 use Ciptaone\Services\AuthService;
-use Ciptaone\Services\PaymentAdapters\TripayPaymentAdapter;
-use Ciptaone\Services\Payments\TripayService;
+use Ciptaone\Services\PaymentAdapters\DuitkuPaymentAdapter;
+use Ciptaone\Services\Payments\DuitkuService;
 use Ciptaone\Services\TelegramBotService;
 use Ciptaone\Services\TopupService;
 use Ciptaone\Services\WalletService;
@@ -31,7 +31,7 @@ function test_topup_telegram_suite(Database $db): void
     // 1. Minimum amount validation
     $minCaught = false;
     try {
-        $topupService->createTopup($userId, $user['email'], 5000, 'tripay_qris');
+        $topupService->createTopup($userId, $user['email'], 5000, 'duitku');
     } catch (AppError $ae) {
         $minCaught = true;
         assert($ae->getStatusCode() === 400, 'Minimum topup validation did not return 400');
@@ -67,37 +67,40 @@ function test_topup_telegram_suite(Database $db): void
     }
     assert($uploadCaught, 'uploadProof was not rejected');
 
-    // 4. Create automated topup (Tripay QRIS mock)
-    $tripayMock = new class($config, $db) extends TripayService {
+    // 4. Create automated topup (Duitku QRIS / VA mock)
+    $duitkuMock = new class($config, $db) extends DuitkuService {
         public function isConfigured(): bool { return true; }
-        public function createQrisTransaction(
-            string $merchantRef,
+        public function createInvoice(
+            string $merchantOrderId,
             int $amount,
             string $customerName,
             string $customerEmail,
-            string $customerPhone = '08123456789',
+            string $customerPhone = '081234567890',
+            string $paymentMethod = '',
             array $items = []
         ): array {
             return [
-                'reference' => 'TP-REF-TEST',
-                'order_id' => $merchantRef,
+                'reference' => 'DK-REF-TEST',
+                'order_id' => $merchantOrderId,
                 'amount' => $amount,
-                'qr_url' => 'https://tripay.co.id/qr/test.png',
+                'payment_url' => 'https://sandbox.duitku.com/checkout/test',
+                'qr_url' => 'https://duitku.com/qr/test.png',
                 'qr_string' => '00020101021226...',
-                'expired_time' => time() + 900,
+                'va_number' => '88880001234567',
+                'expired_time' => time() + 3600,
             ];
         }
     };
-    $topupServiceWithTripay = new TopupService(
+    $topupServiceWithDuitku = new TopupService(
         $db,
         $config,
         $walletService,
         $telegramBot,
         null,
-        new TripayPaymentAdapter($tripayMock, $config, $db)
+        new DuitkuPaymentAdapter($duitkuMock, $config, $db)
     );
 
-    $topup = $topupServiceWithTripay->createTopup($userId, $user['email'], 50000, 'tripay_qris');
+    $topup = $topupServiceWithDuitku->createTopup($userId, $user['email'], 50000, 'duitku_qris');
     assert(!empty($topup['order_id']), 'Order ID is empty');
     assert(str_starts_with($topup['order_id'], 'INV-'), 'Order ID format invalid');
     assert($topup['credits_to_grant'] === 50000, 'Credits to grant mismatch');
@@ -107,12 +110,12 @@ function test_topup_telegram_suite(Database $db): void
     $orderId = $topup['order_id'];
 
     // 5. Automated settlement via webhook callback reviewTopup
-    $settleResult = $topupServiceWithTripay->reviewTopup($orderId, 'paid', 'gateway:tripay:webhook');
+    $settleResult = $topupServiceWithDuitku->reviewTopup($orderId, 'paid', 'gateway:duitku:webhook');
     assert($settleResult['status'] === 'paid', 'Settlement failed');
     assert($walletService->getWallet($userId)['balance_credits'] === 50000, 'Wallet was not credited with 50000');
 
     // 6. Idempotency: duplicate settlement must not double-credit
-    $settleDuplicate = $topupServiceWithTripay->reviewTopup($orderId, 'paid', 'gateway:tripay:webhook');
+    $settleDuplicate = $topupServiceWithDuitku->reviewTopup($orderId, 'paid', 'gateway:duitku:webhook');
     assert($walletService->getWallet($userId)['balance_credits'] === 50000, 'Duplicate settlement credited wallet again!');
 
     // 7. Verify Telegram Reporting Output
@@ -166,7 +169,7 @@ function test_topup_telegram_suite(Database $db): void
         'data' => 'report:daily',
         'message' => ['chat' => ['id' => 99999999], 'message_id' => 200],
     ];
-    $unauthCbRes = $telegramBot->handleCallbackQuery($unauthCb, $db, $topupServiceWithTripay, $apiKeyService);
+    $unauthCbRes = $telegramBot->handleCallbackQuery($unauthCb, $db, $topupServiceWithDuitku, $apiKeyService);
     assert($unauthCbRes['status'] === 'unauthorized', 'Unauthorized user got report callback');
 
     $adminCb = [
@@ -175,7 +178,7 @@ function test_topup_telegram_suite(Database $db): void
         'data' => 'report:daily',
         'message' => ['chat' => ['id' => 12345678], 'message_id' => 201],
     ];
-    $adminCbRes = $telegramBot->handleCallbackQuery($adminCb, $db, $topupServiceWithTripay, $apiKeyService);
+    $adminCbRes = $telegramBot->handleCallbackQuery($adminCb, $db, $topupServiceWithDuitku, $apiKeyService);
     assert($adminCbRes['status'] === 'handled', 'Admin report callback failed');
 
     // 10. Deprecated verification callback handling
@@ -185,9 +188,9 @@ function test_topup_telegram_suite(Database $db): void
         'data' => "topup:approve:{$orderId}",
         'message' => ['chat' => ['id' => 12345678], 'message_id' => 202],
     ];
-    $deprecatedRes = $telegramBot->handleCallbackQuery($deprecatedCb, $db, $topupServiceWithTripay, $apiKeyService);
+    $deprecatedRes = $telegramBot->handleCallbackQuery($deprecatedCb, $db, $topupServiceWithDuitku, $apiKeyService);
     assert($deprecatedRes['status'] === 'deprecated', 'Old verification button should be marked deprecated');
 
     // 11. Instant Payment Notification
-    $telegramBot->notifyAdminPaymentReceived($orderId, $user['email'], 50000, 'tripay_qris');
+    $telegramBot->notifyAdminPaymentReceived($orderId, $user['email'], 50000, 'duitku_qris');
 }

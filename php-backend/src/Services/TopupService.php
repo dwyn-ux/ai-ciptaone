@@ -12,7 +12,6 @@ use Ciptaone\Services\PaymentAdapters\BasePaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\DuitkuPaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\ManualPaymentAdapter;
-use Ciptaone\Services\PaymentAdapters\TripayPaymentAdapter;
 
 /**
  * Top-up invoice management, safe private payment proof uploads,
@@ -28,7 +27,6 @@ class TopupService
     private ManualPaymentAdapter $manualTransferAdapter;
     private ManualPaymentAdapter $manualQrisAdapter;
     private DanaPaymentAdapter $danaAdapter;
-    private TripayPaymentAdapter $tripayAdapter;
     private DuitkuPaymentAdapter $duitkuAdapter;
 
     public function __construct(
@@ -37,7 +35,6 @@ class TopupService
         ?WalletService $walletService = null,
         ?TelegramBotService $telegramBot = null,
         ?AuditService $auditService = null,
-        ?TripayPaymentAdapter $tripayAdapter = null,
         ?DuitkuPaymentAdapter $duitkuAdapter = null
     ) {
         $this->db = $db ?? Database::getInstance();
@@ -49,7 +46,6 @@ class TopupService
         $this->manualTransferAdapter = new ManualPaymentAdapter('manual_transfer', $this->config);
         $this->manualQrisAdapter = new ManualPaymentAdapter('manual_qris', $this->config);
         $this->danaAdapter = new DanaPaymentAdapter($this->config);
-        $this->tripayAdapter = $tripayAdapter ?? new TripayPaymentAdapter(null, $this->config, $this->db);
         $this->duitkuAdapter = $duitkuAdapter ?? new DuitkuPaymentAdapter(null, $this->config, $this->db);
     }
 
@@ -65,13 +61,11 @@ class TopupService
         }
 
         return match ($normalized) {
-            'tripay_qris' => $this->tripayAdapter->getTripayService()->isConfigured()
-                ? $this->tripayAdapter
-                : throw new AppError(
-                    ErrorCode::INVALID_REQUEST,
-                    'Metode pembayaran Tripay dinonaktifkan. Silakan gunakan Duitku Gateway.',
-                    400
-                ),
+            'tripay_qris' => throw new AppError(
+                ErrorCode::INVALID_REQUEST,
+                'Metode pembayaran Tripay telah dihapus. Silakan gunakan Duitku Gateway.',
+                400
+            ),
             'dana_qris_dynamic' => $this->danaAdapter,
             'manual_transfer', 'manual_qris' => throw new AppError(
                 ErrorCode::INVALID_REQUEST,

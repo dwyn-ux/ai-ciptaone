@@ -117,10 +117,10 @@ function test_security_csrf_suite(Database $db): void
     assert($circuitBreakerCaught, 'Circuit breaker failed to halt execution when daily limit was exceeded');
 
     // 7. Test .env Strict Precedence for Payment Gateways (Cannot be overridden by database)
-    $config->set('TRIPAY_API_KEY', 'TRIPAY_ENV_SECURE_KEY');
-    $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES ("TRIPAY_API_KEY", "TRIPAY_TAMPERED_DB_KEY", ?)', [$nowIso]);
-    $tripayService = new \Ciptaone\Services\Payments\TripayService($config, $db);
-    $reflection = new \ReflectionProperty($tripayService, 'apiKey');
+    $config->set('DUITKU_API_KEY', 'DUITKU_ENV_SECURE_KEY');
+    $db->execute('REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES ("DUITKU_API_KEY", "DUITKU_TAMPERED_DB_KEY", ?)', [$nowIso]);
+    $duitkuService = new \Ciptaone\Services\Payments\DuitkuService($config, $db);
+    $reflection = new \ReflectionProperty($duitkuService, 'apiKey');
     $reflection->setAccessible(true);
-    assert($reflection->getValue($tripayService) === 'TRIPAY_ENV_SECURE_KEY', '.env key must strictly override database setting');
+    assert($reflection->getValue($duitkuService) === 'DUITKU_ENV_SECURE_KEY', '.env key must strictly override database setting');
 }

@@ -12,9 +12,7 @@ use Ciptaone\Core\Security;
 use Ciptaone\Services\ApiKeyService;
 use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\DuitkuPaymentAdapter;
-use Ciptaone\Services\PaymentAdapters\TripayPaymentAdapter;
 use Ciptaone\Services\Payments\DuitkuService;
-use Ciptaone\Services\Payments\TripayService;
 use Ciptaone\Services\TelegramBotService;
 use Ciptaone\Services\TopupService;
 
@@ -65,7 +63,6 @@ class WebhookController extends BaseController
 
         $payload = $request->getBody();
         $apiKeyService = new ApiKeyService($this->db);
-        $tripayService = new TripayService($this->config, $this->db);
         $duitkuService = new DuitkuService($this->config, $this->db);
 
         $this->telegramBot->handleTelegramUpdate(
@@ -73,7 +70,6 @@ class WebhookController extends BaseController
             $this->db,
             $this->topupService,
             $apiKeyService,
-            $tripayService,
             $duitkuService,
             $botRole
         );
@@ -118,52 +114,7 @@ class WebhookController extends BaseController
             [$webhookId, $gateway, substr($payloadHash, 0, 16), $payloadHash, $nowIso]
         );
 
-        if ($gateway === 'tripay') {
-            $adapter = new TripayPaymentAdapter(null, $this->config, $this->db);
-            try {
-                $verifiedData = $adapter->verifyWebhook($headers, $rawBody);
-                $orderId = (string)($verifiedData['order_id'] ?? '');
-
-                if (($verifiedData['status'] ?? '') === 'paid') {
-                    // Defensive amount check: ensure paid amount is not less than required invoice amount
-                    $topupRecord = $this->db->fetchOne('SELECT amount_minor FROM topups WHERE order_id = ?', [$orderId]);
-                    if ($topupRecord !== null && (int)($verifiedData['amount'] ?? 0) < (int)$topupRecord['amount_minor']) {
-                        throw new AppError(ErrorCode::INVALID_REQUEST, 'Nominal pembayaran webhook lebih kecil dari jumlah tagihan invoice.', 400);
-                    }
-
-                    $this->topupService->reviewTopup(
-                        $orderId,
-                        'paid',
-                        'gateway:tripay:webhook'
-                    );
-
-                    $this->db->execute(
-                        'UPDATE payment_webhook_events SET processing_status = "processed", processed_at = ? WHERE id = ?',
-                        [$nowIso, $webhookId]
-                    );
-
-                    // Push instant fulfillment to Telegram customer
-                    $this->notifyCustomerPaymentSuccess($orderId, (int)($verifiedData['amount'] ?? 0));
-
-                    // Push instant alert to Telegram admin
-                    try {
-                        $topupUser = $this->db->fetchOne(
-                            'SELECT u.email_normalized FROM topups t JOIN users u ON t.user_id = u.id WHERE t.order_id = ?',
-                            [$orderId]
-                        );
-                        $userEmail = (string)($topupUser['email_normalized'] ?? 'user');
-                        $this->telegramBot->notifyAdminPaymentReceived($orderId, $userEmail, (int)($verifiedData['amount'] ?? 0), 'tripay_qris');
-                    } catch (\Throwable) {
-                    }
-                }
-            } catch (\Throwable $ex) {
-                $this->db->execute(
-                    'UPDATE payment_webhook_events SET processing_status = "failed", error_code = ? WHERE id = ?',
-                    [substr($ex->getMessage(), 0, 255), $webhookId]
-                );
-                throw $ex;
-            }
-        } elseif ($gateway === 'duitku') {
+        if ($gateway === 'duitku') {
             $adapter = new DuitkuPaymentAdapter(null, $this->config, $this->db);
             try {
                 $verifiedData = $adapter->verifyWebhook($headers, $rawBody);

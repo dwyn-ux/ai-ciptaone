@@ -71,13 +71,6 @@ class Config
             'TELEGRAM_WEBHOOK_SECRET' => '',
             'TELEGRAM_REPORT_WEBHOOK_SECRET' => '',
 
-            // Tripay Payment Gateway (Dynamic QRIS)
-            'TRIPAY_API_KEY' => '',
-            'TRIPAY_PRIVATE_KEY' => '',
-            'TRIPAY_MERCHANT_CODE' => '',
-            'TRIPAY_MODE' => 'sandbox', // 'sandbox' or 'production'
-            'TRIPAY_WEBHOOK_IP_WHITELIST' => '',
-
             // Duitku Payment Gateway (Full Service: QRIS & VA)
             'DUITKU_MERCHANT_CODE' => '',
             'DUITKU_API_KEY' => '',
