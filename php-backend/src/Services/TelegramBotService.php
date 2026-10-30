@@ -731,53 +731,16 @@ class TelegramBotService
                 }
             }
 
-            // Priority 2: Fallback ke QRIS & Website Checkout (Seluruh pembayaran diarahkan ke QR)
-            $manualQrisUrl = trim((string)$this->config->get('MANUAL_QRIS_IMAGE_URL', ''));
+            // Priority 2: Arahkan ke Portal Topup Web Otomatis
+            $caption = "🧾 *TOP-UP SALDO AI CIPTAONE*\n\n" .
+                       "• *Nominal:* *Rp" . number_format($amount, 0, ',', '.') . "*\n\n" .
+                       "Silakan klik tombol *Bayar Sekarang via Web* di bawah untuk memilih metode pembayaran otomatis (QRIS atau Virtual Account Bank BCA, Mandiri, BRI, BNI).";
 
-            $dateStr = gmdate('Ymd');
-            $orderId = 'ORD-QR-' . $dateStr . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
-            $topupId = Security::generateId('top');
-            $nowIso = gmdate('Y-m-d H:i:s');
-            $expiresIso = gmdate('Y-m-d H:i:s', time() + 7200);
-
-            try {
-                $db->execute(
-                    "INSERT INTO topups (
-                        id, user_id, order_id, payment_provider, payment_method,
-                        provider_reference, amount_minor, currency, credits_to_grant,
-                        status, proof_file_key, reviewed_by, reviewed_at, rejection_reason,
-                        idempotency_key, paid_at, expires_at, created_at, updated_at
-                    ) VALUES (?, ?, ?, 'manual', 'manual_qris', NULL, ?, 'IDR', ?, 'pending', NULL, NULL, NULL, NULL, ?, NULL, ?, ?, ?)",
-                    [
-                        $topupId, (string)$user['id'], $orderId,
-                        $amount, $amount,
-                        "topup_order_{$orderId}", $expiresIso, $nowIso, $nowIso
-                    ]
-                );
-            } catch (\Throwable) {}
-
-            $formattedAmount = number_format($amount, 0, ',', '.');
             $buttons = [
-                [['text' => '💳 Bayar Sekarang via Web QRIS', 'url' => 'https://ai.ciptaone.site/topup']],
-                [['text' => '🔄 Cek Status Pembayaran', 'callback_data' => "check:{$orderId}"]],
+                [['text' => '💳 Bayar Sekarang via Web', 'url' => 'https://ai.ciptaone.site/topup']],
             ];
-
-            $caption = "🧾 *INVOICE PEMBAYARAN QRIS*\n\n" .
-                       "• *Order ID:* `{$orderId}`\n" .
-                       "• *Nominal:* *Rp{$formattedAmount}*\n" .
-                       "• *Metode:* QRIS & Pembayaran Instan\n\n" .
-                       "📱 *Petunjuk Pembayaran:*\n" .
-                       "1. Scan kode QRIS di atas dengan GoPay, OVO, Dana, ShopeePay, BCA, Mandiri, BRI, atau M-Banking lainnya.\n" .
-                       "2. Atau klik tombol *Bayar Sekarang via Web QRIS* di bawah untuk memilih metode pembayaran.\n\n" .
-                       "⚡ Saldo dan API Key Anda akan otomatis aktif setelah pembayaran selesai.";
-
-            $qrImageUrl = $manualQrisUrl !== ''
-                ? $manualQrisUrl
-                : 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=' . urlencode("https://ai.ciptaone.site/topup");
-
-            $this->sendPhoto($chatId, $qrImageUrl, $caption, ['inline_keyboard' => $buttons]);
-
-            return ['status' => 'qris_fallback', 'order_id' => $orderId];
+            $this->sendMessage($chatId, $caption, ['inline_keyboard' => $buttons]);
+            return ['status' => 'directed_to_web'];
         }
 
         // 4. Customer Check Status Action (check:ORD-XXXX)

@@ -69,35 +69,11 @@ class TopupController extends BaseController
 
     public function uploadProof(Request $request, array $params): void
     {
-        Security::validateCsrf($request, $this->config);
-        $user = $this->getAuthUser($request);
-        $identifier = (string)($params['identifier'] ?? '');
-
-        $file = $request->getFile('file');
-        if (!$file || empty($file['tmp_name'])) {
-            throw new AppError(ErrorCode::INVALID_REQUEST, 'File bukti transfer tidak ditemukan pada request.', 422);
-        }
-
-        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-            throw new AppError(ErrorCode::INVALID_REQUEST, 'Gagal mengunggah file (upload error code: ' . $file['error'] . ').', 400);
-        }
-
-        $filename = (string)($file['name'] ?? 'proof.jpg');
-        $contentType = (string)($file['type'] ?? 'image/jpeg');
-        $fileBytes = file_get_contents((string)$file['tmp_name']);
-        if ($fileBytes === false) {
-            throw new AppError(ErrorCode::INVALID_REQUEST, 'Gagal membaca isi file yang diunggah.', 400);
-        }
-
-        $res = $this->topupService->uploadProof(
-            $identifier,
-            $user['id'],
-            $filename,
-            $contentType,
-            $fileBytes
+        throw new AppError(
+            ErrorCode::INVALID_REQUEST,
+            'Fitur unggah bukti transfer dan transfer manual telah dihapus. Seluruh pembayaran diproses otomatis via gateway.',
+            400
         );
-
-        Response::json($res);
     }
 
     public function cancelTopup(Request $request, array $params): void

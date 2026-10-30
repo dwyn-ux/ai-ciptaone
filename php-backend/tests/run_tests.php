@@ -73,10 +73,10 @@ function run_all_tests(): array {
         'Router: Token Math, Models Catalog & Chat Completions' => function () use ($db) {
             \Ciptaone\Tests\test_router_chat_suite($db);
         },
-        'Top-up: Invoices, Private Proofs & Telegram Allowlist Review' => function () use ($db) {
+        'Top-up: Invoices, Automated Duitku & Telegram Analytics' => function () use ($db) {
             \Ciptaone\Tests\test_topup_telegram_suite($db);
         },
-        'Payment Adapters: Manual Transfer & DANA Deactivation Protection' => function () {
+        'Payment Adapters: DANA Deactivation Protection' => function () {
             \Ciptaone\Tests\test_payment_adapters_suite();
         },
         'Duitku: Full Service (QRIS & VA), Signature Tampering & Webhook Settlement' => function () use ($db) {

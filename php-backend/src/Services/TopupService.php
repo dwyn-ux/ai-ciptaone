@@ -11,7 +11,6 @@ use Ciptaone\Core\Security;
 use Ciptaone\Services\PaymentAdapters\BasePaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\DanaPaymentAdapter;
 use Ciptaone\Services\PaymentAdapters\DuitkuPaymentAdapter;
-use Ciptaone\Services\PaymentAdapters\ManualPaymentAdapter;
 
 /**
  * Top-up invoice management, safe private payment proof uploads,
@@ -24,8 +23,6 @@ class TopupService
     private WalletService $walletService;
     private TelegramBotService $telegramBot;
     private AuditService $auditService;
-    private ManualPaymentAdapter $manualTransferAdapter;
-    private ManualPaymentAdapter $manualQrisAdapter;
     private DanaPaymentAdapter $danaAdapter;
     private DuitkuPaymentAdapter $duitkuAdapter;
 
@@ -43,8 +40,6 @@ class TopupService
         $this->telegramBot = $telegramBot ?? new TelegramBotService($this->config);
         $this->auditService = $auditService ?? new AuditService($this->db);
 
-        $this->manualTransferAdapter = new ManualPaymentAdapter('manual_transfer', $this->config);
-        $this->manualQrisAdapter = new ManualPaymentAdapter('manual_qris', $this->config);
         $this->danaAdapter = new DanaPaymentAdapter($this->config);
         $this->duitkuAdapter = $duitkuAdapter ?? new DuitkuPaymentAdapter(null, $this->config, $this->db);
     }
@@ -69,7 +64,7 @@ class TopupService
             'dana_qris_dynamic' => $this->danaAdapter,
             'manual_transfer', 'manual_qris' => throw new AppError(
                 ErrorCode::INVALID_REQUEST,
-                "Metode pembayaran manual ('{$paymentMethod}') telah dinonaktifkan. Silakan gunakan pembayaran otomatis QRIS atau Virtual Account.",
+                "Metode pembayaran manual ('{$paymentMethod}') telah dihapus. Seluruh pembayaran diproses otomatis via QRIS atau Virtual Account.",
                 400
             ),
             default => throw new AppError(
@@ -270,7 +265,7 @@ class TopupService
     ): array {
         throw new AppError(
             ErrorCode::INVALID_REQUEST,
-            'Metode pembayaran manual dan unggah bukti telah dinonaktifkan. Seluruh transaksi diverifikasi secara otomatis oleh sistem payment gateway.',
+            'Fitur unggah bukti transfer dan pembayaran manual telah dihapus. Seluruh transaksi diverifikasi secara otomatis oleh sistem payment gateway.',
             400
         );
     }

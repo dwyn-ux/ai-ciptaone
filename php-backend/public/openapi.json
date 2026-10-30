@@ -499,7 +499,7 @@
                 "required": ["amount_minor", "payment_method"],
                 "properties": {
                   "amount_minor": { "type": "integer", "example": 50000, "description": "Nominal dalam Rupiah" },
-                  "payment_method": { "type": "string", "enum": ["duitku", "duitku_qris", "dana_qris_dynamic", "manual_transfer", "manual_qris"], "example": "duitku" }
+                  "payment_method": { "type": "string", "enum": ["duitku", "duitku_qris", "dana_qris_dynamic"], "example": "duitku" }
                 }
               }
             }
@@ -507,33 +507,6 @@
         },
         "responses": {
           "201": { "description": "Invoice top-up berhasil diterbitkan" }
-        }
-      }
-    },
-    "/api/v1/topups/{identifier}/proof": {
-      "post": {
-        "summary": "Unggah Bukti Transfer Pembayaran",
-        "description": "Mengunggah foto bukti pembayaran bank transfer. Bukti disimpan secara privat dan otomatis diteruskan ke admin Telegram untuk diverifikasi.",
-        "security": [{ "CookieAuth": [] }],
-        "parameters": [
-          { "name": "identifier", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "required": ["file"],
-                "properties": {
-                  "file": { "type": "string", "format": "binary", "description": "File gambar JPG, PNG, atau WEBP (maks 5MB)" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Bukti berhasil diunggah, invoice beralih ke status under_review" }
         }
       }
     },

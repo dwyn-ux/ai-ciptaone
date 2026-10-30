@@ -52,17 +52,9 @@ class Config
             'DB_CHARSET' => 'utf8mb4',
             'SQLITE_PATH' => __DIR__ . '/../../storage/local.sqlite3',
 
-            // Storage
-            'PROOF_UPLOAD_DIR' => __DIR__ . '/../../storage/proofs',
-            'MAX_PROOF_SIZE_BYTES' => 5 * 1024 * 1024, // 5MB
-
             // Topup
             'TOPUP_EXPIRY_MINUTES' => 120,
             'CREDIT_PER_RUPIAH' => 1,
-            'MANUAL_BANK_NAME' => 'BCA / Mandiri / BRI',
-            'MANUAL_ACCOUNT_NO' => '1234567890',
-            'MANUAL_ACCOUNT_HOLDER' => 'AI Ciptaone Router',
-            'MANUAL_QRIS_IMAGE_URL' => '',
 
             // Telegram Dual-Bot Architecture (Customer & Admin Report)
             'TELEGRAM_BOT_TOKEN' => '',                 // Bot 1: Customer purchase, balance, keys
@@ -173,7 +165,7 @@ class Config
         } elseif (is_numeric($value)) {
             $this->data[$key] = str_contains($value, '.') ? (float)$value : (int)$value;
         } else {
-            if (($key === 'SQLITE_PATH' || $key === 'PROOF_UPLOAD_DIR') && !empty($value)) {
+            if ($key === 'SQLITE_PATH' && !empty($value)) {
                 if (!str_starts_with($value, '/') && !preg_match('/^[a-zA-Z]:[\\\\\/]/', $value)) {
                     $value = dirname(__DIR__, 2) . '/' . ltrim($value, '/\\');
                 }

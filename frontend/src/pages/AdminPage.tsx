@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   CheckCircle2,
   XCircle,
-  Eye,
   Sliders,
   Users,
   AlertCircle,
@@ -78,7 +77,6 @@ export const AdminPage: React.FC = () => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [settings, setSettings] = useState<AdminSettings | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
 
   // Settings form states
   const [openrouterKeyInput, setOpenrouterKeyInput] = useState("");
@@ -504,14 +502,13 @@ export const AdminPage: React.FC = () => {
                   <th className="px-6 py-3.5">Nominal</th>
                   <th className="px-6 py-3.5">Kredit</th>
                   <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5">Bukti</th>
                   <th className="px-6 py-3.5 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {topups.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                    <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
                       Tidak ada permintaan top-up yang membutuhkan tindakan.
                     </td>
                   </tr>
@@ -538,21 +535,6 @@ export const AdminPage: React.FC = () => {
                         >
                           {t.status}
                         </span>
-                      </td>
-                      <td className="px-6 py-3.5">
-                        {t.proof_file_key ? (
-                          <button
-                            onClick={() =>
-                              setSelectedProofUrl(`/api/v1/admin/topups/${t.order_id}/proof`)
-                            }
-                            className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-semibold"
-                          >
-                            <Eye className="w-3.5 h-3.5 mr-1" />
-                            Lihat Bukti
-                          </button>
-                        ) : (
-                          <span className="text-slate-400">Belum ada</span>
-                        )}
                       </td>
                       <td className="px-6 py-3.5 text-right space-x-2">
                         {t.status !== "paid" && t.status !== "rejected" && (
@@ -964,35 +946,6 @@ export const AdminPage: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Proof Viewer Modal */}
-      {selectedProofUrl && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Bukti Pembayaran Pengguna</h3>
-              <button
-                onClick={() => setSelectedProofUrl(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center min-h-[300px]">
-              <img
-                src={selectedProofUrl}
-                alt="Bukti Transfer"
-                className="object-contain max-h-[70vh] w-full"
-              />
-            </div>
-
-            <p className="text-xs text-slate-500">
-              ⚠️ <em>Catatan:</em> Pastikan nominal dan mutasi rekening pada portal perbankan resmi Anda sesuai sebelum menyetujui.
-            </p>
           </div>
         </div>
       )}

@@ -427,11 +427,6 @@ $duitkuMerchant = (string)$config->get('DUITKU_MERCHANT_CODE', '');
 $duitkuMode = (string)$config->get('DUITKU_MODE', 'sandbox');
 $duitkuCallback = (string)$config->get('DUITKU_CALLBACK_URL', 'https://ciptaone.com/api/v1/webhooks/duitku');
 
-$manualBankName = (string)$config->get('MANUAL_BANK_NAME', 'BCA / Mandiri / BRI');
-$manualAccountNo = (string)$config->get('MANUAL_ACCOUNT_NO', '1234567890');
-$manualAccountHolder = (string)$config->get('MANUAL_ACCOUNT_HOLDER', 'AI Ciptaone Router');
-$manualQrisUrl = (string)$config->get('MANUAL_QRIS_IMAGE_URL', '');
-
 $maxDailyCredits = (int)$config->get('MAX_DAILY_AI_CREDITS', 500000);
 $todayStart = gmdate('Y-m-d 00:00:00');
 $todayUsageRow = $db->fetchOne("SELECT COALESCE(SUM(billed_credits), 0) AS total_today FROM usage_events WHERE created_at >= ? AND status = 'success'", [$todayStart]);
@@ -769,32 +764,6 @@ $activeTab = $_GET['tab'] ?? 'settings';
                             <div class="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-[10px] space-y-0.5">
                                 <span class="text-slate-400 font-sans block">URL Webhook Callback Duitku:</span>
                                 <code class="text-emerald-400 font-mono select-all block">https://ciptaone.com/api/v1/webhooks/duitku</code>
-                            </div>
-                        </div>
-
-                        <!-- Rekening Bank Manual -->
-                        <div class="p-4 rounded-xl border border-slate-800 bg-slate-950/70 space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-xs text-white">Rekening Bank Manual (Transfer)</span>
-                                <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                    <span>Terkunci di .env</span>
-                                </span>
-                            </div>
-                            <p class="text-[11px] text-slate-400">Rekening tujuan transfer manual. Kredit hanya bertambah jika Anda menekan Setujui.</p>
-                            <div class="space-y-1 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800">
-                                <div class="flex justify-between">
-                                    <span class="text-slate-500">MANUAL_BANK_NAME:</span>
-                                    <span class="text-white font-bold"><?php echo htmlspecialchars($manualBankName); ?></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-slate-500">MANUAL_ACCOUNT_NO:</span>
-                                    <span class="text-amber-400 font-bold"><?php echo htmlspecialchars($manualAccountNo); ?></span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-slate-500">MANUAL_ACCOUNT_HOLDER:</span>
-                                    <span class="text-white"><?php echo htmlspecialchars($manualAccountHolder); ?></span>
-                                </div>
                             </div>
                         </div>
 

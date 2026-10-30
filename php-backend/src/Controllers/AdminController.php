@@ -286,19 +286,7 @@ class AdminController extends BaseController
     public function getProof(Request $request, array $params): void
     {
         $this->getAdminUser($request);
-        $orderId = (string)($params['order_id'] ?? '');
-
-        $topup = $this->topupService->getTopupByIdOrOrder($orderId);
-        $proofKey = $topup['proof_file_key'] ?? null;
-
-        if (!$proofKey) {
-            throw new AppError(ErrorCode::NOT_FOUND, 'Bukti transfer belum diunggah untuk order ini.', 404);
-        }
-
-        $uploadDir = (string)$this->config->get('PROOF_UPLOAD_DIR');
-        $filePath = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $proofKey;
-
-        Response::file($filePath);
+        throw new AppError(ErrorCode::NOT_FOUND, 'Fitur bukti transfer manual telah dihapus.', 404);
     }
 
     public function listUsers(Request $request): void

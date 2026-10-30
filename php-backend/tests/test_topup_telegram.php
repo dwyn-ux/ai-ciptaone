@@ -63,7 +63,7 @@ function test_topup_telegram_suite(Database $db): void
         $topupService->uploadProof('INV-ANY', $userId, 'proof.jpg', 'image/jpeg', 'fakebytes');
     } catch (AppError $ae) {
         $uploadCaught = true;
-        assert(str_contains($ae->getMessage(), 'dinonaktifkan'), 'Upload proof should inform manual upload is disabled');
+        assert(str_contains($ae->getMessage(), 'dihapus') || str_contains($ae->getMessage(), 'manual'), 'Upload proof should inform manual upload is disabled/removed');
     }
     assert($uploadCaught, 'uploadProof was not rejected');
 
