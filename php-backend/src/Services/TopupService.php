@@ -55,13 +55,23 @@ class TopupService
 
     public function getAdapter(string $paymentMethod): BasePaymentAdapter
     {
-        return match ($paymentMethod) {
-            'tripay_qris' => throw new AppError(
-                ErrorCode::INVALID_REQUEST,
-                'Metode pembayaran Tripay dinonaktifkan. Silakan gunakan Duitku Gateway.',
-                400
-            ),
-            'duitku', 'duitku_qris' => $this->duitkuAdapter,
+        $normalized = strtolower(trim($paymentMethod));
+        // Support all Duitku channels: duitku, duitku_qris, duitku_va, duitku_va_bca, etc.
+        if (
+            str_starts_with($normalized, 'duitku') ||
+            in_array($normalized, ['qris', 'va', 'bca_va', 'mandiri_va', 'bri_va', 'bni_va', 'permata_va', 'cimb_va', 'bc', 'm2', 'br', 'bn', 'bt', 'b1', 'sp'], true)
+        ) {
+            return $this->duitkuAdapter;
+        }
+
+        return match ($normalized) {
+            'tripay_qris' => $this->tripayAdapter->getTripayService()->isConfigured()
+                ? $this->tripayAdapter
+                : throw new AppError(
+                    ErrorCode::INVALID_REQUEST,
+                    'Metode pembayaran Tripay dinonaktifkan. Silakan gunakan Duitku Gateway.',
+                    400
+                ),
             'dana_qris_dynamic' => $this->danaAdapter,
             'manual_transfer', 'manual_qris' => throw new AppError(
                 ErrorCode::INVALID_REQUEST,
@@ -106,20 +116,25 @@ class TopupService
         $idempotencyKey = "topup_order_{$orderId}";
 
         $adapter = $this->getAdapter($paymentMethod);
-        $invoiceData = $adapter->createInvoice($orderId, $amountMinor, 'IDR', $userId, $userEmail);
+        $invoiceData = $adapter->createInvoice($orderId, $amountMinor, 'IDR', $userId, $userEmail, $paymentMethod);
 
         $checkoutUrl = $invoiceData['checkout_url'] ?? null;
         $qrUrl = $invoiceData['qr_url'] ?? null;
         $qrString = $invoiceData['qr_string'] ?? null;
+        $vaNumber = $invoiceData['va_number'] ?? ($invoiceData['instructions']['va_number'] ?? null);
         $providerRef = $invoiceData['provider_reference'] ?? $orderId;
         $instructions = $invoiceData['instructions'] ?? [];
+        if ($vaNumber !== null) {
+            $instructions['va_number'] = $vaNumber;
+        }
 
-        // Store payment metadata (checkout_url, qr_url, instructions) in rejection_reason column
+        // Store payment metadata (checkout_url, qr_url, va_number, instructions) in rejection_reason column
         // while status is 'pending', so it persists across page reloads and status checks without schema changes.
         $metadataJson = json_encode([
             'checkout_url' => $checkoutUrl,
             'qr_url' => $qrUrl,
             'qr_string' => $qrString,
+            'va_number' => $vaNumber,
             'instructions' => $instructions,
         ], JSON_UNESCAPED_SLASHES);
 
@@ -150,6 +165,7 @@ class TopupService
             'checkout_url' => $checkoutUrl,
             'qr_url' => $qrUrl,
             'qr_string' => $qrString,
+            'va_number' => $vaNumber,
             'instructions' => $instructions,
         ];
     }
@@ -175,7 +191,9 @@ class TopupService
 
         // Live Gateway Status Verification for pending invoices:
         // Check live with Duitku in case webhook was delayed, missed, or blocked by sandbox networking.
-        if ($pollGateway && $row['status'] === 'pending' && in_array($row['payment_method'], ['duitku', 'duitku_qris'], true)) {
+        $isDuitkuMethod = str_starts_with((string)$row['payment_method'], 'duitku') ||
+            in_array((string)$row['payment_method'], ['qris', 'va', 'bca_va', 'mandiri_va', 'bri_va', 'bni_va'], true);
+        if ($pollGateway && $row['status'] === 'pending' && $isDuitkuMethod) {
             $duitku = $this->duitkuAdapter->getDuitkuService();
             if ($duitku->isConfigured()) {
                 try {
@@ -211,6 +229,7 @@ class TopupService
                 $row['checkout_url'] = $meta['checkout_url'] ?? null;
                 $row['qr_url'] = $meta['qr_url'] ?? null;
                 $row['qr_string'] = $meta['qr_string'] ?? null;
+                $row['va_number'] = $meta['va_number'] ?? ($meta['instructions']['va_number'] ?? null);
                 $row['instructions'] = $meta['instructions'] ?? [];
             }
         }

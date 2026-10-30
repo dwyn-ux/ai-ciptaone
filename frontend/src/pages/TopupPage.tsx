@@ -28,6 +28,7 @@ interface TopupResponse {
   checkout_url?: string;
   qr_url?: string;
   qr_string?: string;
+  va_number?: string;
   instructions: {
     method?: string;
     metode?: string;
@@ -36,6 +37,7 @@ interface TopupResponse {
     keterangan?: string;
     checkout_url?: string;
     qr_url?: string;
+    va_number?: string;
     order_id?: string;
     amount?: number;
     nominal?: number;
@@ -92,6 +94,7 @@ export const TopupPage: React.FC = () => {
                     checkout_url: fullDetails.checkout_url,
                     qr_url: fullDetails.qr_url,
                     qr_string: fullDetails.qr_string,
+                    va_number: fullDetails.va_number,
                     instructions: fullDetails.instructions || {},
                   };
                 });
@@ -127,6 +130,7 @@ export const TopupPage: React.FC = () => {
             checkout_url: details.checkout_url,
             qr_url: details.qr_url,
             qr_string: details.qr_string,
+            va_number: details.va_number,
             instructions: details.instructions || {},
           });
           if (details.status === "paid" || resultCode === "00") {
@@ -195,6 +199,7 @@ export const TopupPage: React.FC = () => {
         checkout_url: fullDetails.checkout_url,
         qr_url: fullDetails.qr_url,
         qr_string: fullDetails.qr_string,
+        va_number: fullDetails.va_number,
         instructions: fullDetails.instructions || {},
       });
       if (fullDetails.status === "paid") {
@@ -301,6 +306,74 @@ export const TopupPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Virtual Account (VA) Number Card */}
+              {activeInvoice.va_number && activeInvoice.status !== "paid" && (
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white space-y-4 shadow-lg border border-indigo-700/40">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center space-x-2">
+                      <CreditCard className="w-4 h-4 text-emerald-400" />
+                      <span>Nomor Virtual Account (VA) Resmi</span>
+                    </span>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
+                      Verifikasi Otomatis 24/7
+                    </span>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/15 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[11px] text-slate-300 font-medium">Nomor Rekening VA:</div>
+                      <div className="text-2xl sm:text-3xl font-mono font-black tracking-wider text-emerald-300 select-all truncate">
+                        {activeInvoice.va_number}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyText(activeInvoice.va_number!)}
+                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm shrink-0"
+                    >
+                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>{copied ? "Disalin!" : "Salin VA"}</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                      <div className="text-slate-400 text-[11px]">Kode Referensi / Order ID:</div>
+                      <div className="font-semibold text-slate-200 flex items-center justify-between mt-1">
+                        <span className="truncate">{activeInvoice.order_id}</span>
+                        <button
+                          type="button"
+                          onClick={() => copyText(activeInvoice.order_id)}
+                          className="text-indigo-400 hover:text-indigo-300 ml-2"
+                          title="Salin Order ID"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                      <div className="text-slate-400 text-[11px]">Nominal Bayar Tepat:</div>
+                      <div className="font-bold text-emerald-400 flex items-center justify-between mt-1">
+                        <span>Rp{activeInvoice.amount_minor.toLocaleString("id-ID")}</span>
+                        <button
+                          type="button"
+                          onClick={() => copyText(activeInvoice.amount_minor.toString())}
+                          className="text-emerald-400 hover:text-emerald-300 ml-2"
+                          title="Salin Nominal"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-400/20 text-[11px] text-slate-300 leading-relaxed">
+                    💡 <b>Petunjuk Pembayaran:</b> Buka m-Banking atau ATM &rarr; Pilih menu <b>Transfer ke Virtual Account</b> &rarr; Masukkan nomor VA di atas &rarr; Periksa nama akun &rarr; Konfirmasi pembayaran. Saldo akun akan langsung terisi seketika tanpa perlu kirim bukti transfer.
+                  </div>
+                </div>
+              )}
 
               {/* Online Payment Link (Duitku) */}
               {activeInvoice.checkout_url &&
@@ -497,37 +570,158 @@ export const TopupPage: React.FC = () => {
                     />
                     <div className="ml-3">
                       <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
-                        <span>Duitku Gateway (QRIS & Virtual Account Bank)</span>
+                        <span>💳 Duitku Gateway (Halaman Pembayaran Lengkap)</span>
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                          Instan Otomatis
+                          Rekomendasi
                         </span>
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
-                        QRIS (BCA, GoPay, OVO, ShopeePay, DANA) & Virtual Account (BCA, Mandiri, BRI, BNI, Permata, CIMB). Saldo masuk seketika.
+                        Bebas pilih QRIS, Semua Bank Virtual Account, atau E-Wallet di halaman Duitku resmi.
                       </div>
                     </div>
                   </label>
 
-                  {/* DANA Dynamic QRIS */}
+                  {/* BCA Virtual Account */}
                   <label
-                    className={`flex items-start p-3.5 rounded-xl border opacity-50 bg-slate-50 cursor-not-allowed`}
+                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
+                      paymentMethod === "bca_va"
+                        ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
                   >
                     <input
                       type="radio"
                       name="payment_method"
-                      value="dana_qris_dynamic"
-                      disabled
-                      className="mt-1 text-slate-400"
+                      value="bca_va"
+                      checked={paymentMethod === "bca_va"}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
                     />
                     <div className="ml-3">
-                      <div className="font-semibold text-slate-700 text-sm flex items-center space-x-2">
-                        <span>DANA QRIS Dinamis Langsung</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full">
-                          Akan Datang
+                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
+                        <span>🏦 BCA Virtual Account</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
+                          Instan VA
                         </span>
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
-                        Integrasi direct API DANA Bisnis saat izin merchant live diaktifkan.
+                        Dapatkan nomor VA BCA langsung untuk transfer via BCA Mobile, myBCA, KlikBCA, atau ATM BCA.
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Mandiri Virtual Account */}
+                  <label
+                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
+                      paymentMethod === "mandiri_va"
+                        ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="mandiri_va"
+                      checked={paymentMethod === "mandiri_va"}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="ml-3">
+                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
+                        <span>🏦 Mandiri Virtual Account</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
+                          Instan VA
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Dapatkan nomor VA Mandiri langsung untuk bayar di Livin' by Mandiri atau ATM Mandiri.
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* BRI Virtual Account */}
+                  <label
+                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
+                      paymentMethod === "bri_va"
+                        ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="bri_va"
+                      checked={paymentMethod === "bri_va"}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="ml-3">
+                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
+                        <span>🏦 BRI Virtual Account (BRIVA)</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
+                          Instan VA
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Dapatkan kode BRIVA langsung untuk bayar via BRImo, Internet Banking, atau ATM BRI.
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* BNI Virtual Account */}
+                  <label
+                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
+                      paymentMethod === "bni_va"
+                        ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="bni_va"
+                      checked={paymentMethod === "bni_va"}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="ml-3">
+                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
+                        <span>🏦 BNI Virtual Account</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
+                          Instan VA
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Dapatkan nomor VA BNI langsung untuk bayar via BNI Mobile Banking atau ATM BNI.
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* QRIS Otomatis */}
+                  <label
+                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
+                      paymentMethod === "duitku_qris"
+                        ? "border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="duitku_qris"
+                      checked={paymentMethod === "duitku_qris"}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mt-1 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div className="ml-3">
+                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
+                        <span>📱 QRIS Dinamis Otomatis</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                          Instan QR
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Pindai kode QRIS menggunakan GoPay, OVO, ShopeePay, DANA, BCA Mobile, atau aplikasi QRIS apa saja.
                       </div>
                     </div>
                   </label>

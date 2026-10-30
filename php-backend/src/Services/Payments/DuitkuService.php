@@ -149,7 +149,20 @@ class DuitkuService
             ]
         ];
 
-        $channel = (empty($paymentMethod) || in_array($paymentMethod, ['duitku', 'duitku_qris', 'qris'], true)) ? 'SP' : $paymentMethod;
+        // Map friendly payment method names to Duitku channel codes
+        $methodLower = strtolower(trim($paymentMethod));
+        $channel = match ($methodLower) {
+            'bc', 'duitku_va_bca', 'bca_va', 'va_bca', 'bca' => 'BC',
+            'm2', 'duitku_va_mandiri', 'mandiri_va', 'va_mandiri', 'mandiri' => 'M2',
+            'br', 'duitku_va_bri', 'bri_va', 'va_bri', 'bri' => 'BR',
+            'bn', 'duitku_va_bni', 'bni_va', 'va_bni', 'bni' => 'BN',
+            'bt', 'duitku_va_permata', 'permata_va', 'va_permata', 'permata' => 'BT',
+            'b1', 'duitku_va_cimb', 'cimb_va', 'va_cimb', 'cimb' => 'B1',
+            'sp', 'duitku_qris', 'qris', 'shopeepay' => 'SP',
+            'duitku_va', 'va' => 'BC',
+            'duitku', 'duitku_all', 'all', '' => '',
+            default => (empty($paymentMethod) ? '' : strtoupper($paymentMethod)),
+        };
 
         $payload = [
             'merchantCode' => $this->merchantCode,

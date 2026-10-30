@@ -31,7 +31,8 @@ class TripayPaymentAdapter extends BasePaymentAdapter
         int $amountMinor,
         string $currency,
         string $userId,
-        string $userEmail
+        string $userEmail,
+        string $paymentMethod = ''
     ): array {
         $result = $this->tripayService->createQrisTransaction(
             $orderId,

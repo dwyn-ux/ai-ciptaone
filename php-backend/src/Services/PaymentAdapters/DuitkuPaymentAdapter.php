@@ -32,7 +32,8 @@ class DuitkuPaymentAdapter extends BasePaymentAdapter
         int $amountMinor,
         string $currency,
         string $userId,
-        string $userEmail
+        string $userEmail,
+        string $paymentMethod = 'duitku'
     ): array {
         $result = $this->duitkuService->createInvoice(
             $orderId,
@@ -40,7 +41,7 @@ class DuitkuPaymentAdapter extends BasePaymentAdapter
             "Pengguna {$userId}",
             $userEmail,
             '081234567890',
-            'SP'
+            $paymentMethod
         );
 
         $checkoutUrl = $result['payment_url'] ?: ($result['qr_url'] ?? '');
@@ -49,6 +50,7 @@ class DuitkuPaymentAdapter extends BasePaymentAdapter
             'checkout_url' => $checkoutUrl,
             'qr_url' => $result['qr_url'],
             'qr_string' => $result['qr_string'],
+            'va_number' => $result['va_number'] ?? null,
             'provider_reference' => $result['reference'],
             'instructions' => [
                 'metode' => 'Duitku Full Service (QRIS, VA, E-Wallet, Ritel)',
@@ -57,7 +59,7 @@ class DuitkuPaymentAdapter extends BasePaymentAdapter
                 'va_number' => $result['va_number'] ?? null,
                 'qr_url' => $result['qr_url'] ?? null,
                 'berlaku_sampai' => gmdate('Y-m-d H:i:s', (int)($result['expired_time'] ?? (time() + 3600))),
-                'keterangan' => 'Klik tombol Bayar Sekarang untuk menyelesaikan pembayaran melalui QRIS, Virtual Account (BCA, Mandiri, BRI, BNI, CIMB, Permata, dll), E-Wallet, atau Gerai Ritel. Transaksi otomatis aktif dalam hitungan detik.',
+                'keterangan' => 'Selesaikan pembayaran melalui Virtual Account atau QRIS. Transaksi otomatis aktif dalam hitungan detik.',
             ],
         ];
     }

@@ -58,7 +58,8 @@ class DanaPaymentAdapter extends BasePaymentAdapter
         int $amountMinor,
         string $currency,
         string $userId,
-        string $userEmail
+        string $userEmail,
+        string $paymentMethod = ''
     ): array {
         $this->assertConfigured();
 

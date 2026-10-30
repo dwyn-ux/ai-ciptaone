@@ -13,7 +13,8 @@ abstract class BasePaymentAdapter
         int $amountMinor,
         string $currency,
         string $userId,
-        string $userEmail
+        string $userEmail,
+        string $paymentMethod = ''
     ): array;
 
     abstract public function verifyWebhook(array $headers, string $rawBody): array;
