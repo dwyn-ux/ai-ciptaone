@@ -581,35 +581,6 @@ export const TopupPage: React.FC = () => {
                     </div>
                   </label>
 
-                  {/* BCA Virtual Account */}
-                  <label
-                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
-                      paymentMethod === "bca_va"
-                        ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      value="bca_va"
-                      checked={paymentMethod === "bca_va"}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <div className="ml-3">
-                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
-                        <span>🏦 BCA Virtual Account</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
-                          Instan VA
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        Dapatkan nomor VA BCA langsung untuk transfer via BCA Mobile, myBCA, KlikBCA, atau ATM BCA.
-                      </div>
-                    </div>
-                  </label>
-
                   {/* Mandiri Virtual Account */}
                   <label
                     className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
@@ -635,6 +606,35 @@ export const TopupPage: React.FC = () => {
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
                         Dapatkan nomor VA Mandiri langsung untuk bayar di Livin' by Mandiri atau ATM Mandiri.
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* BNI Virtual Account */}
+                  <label
+                    className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
+                      paymentMethod === "bni_va"
+                        ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_method"
+                      value="bni_va"
+                      checked={paymentMethod === "bni_va"}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="ml-3">
+                      <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
+                        <span>🏦 BNI Virtual Account</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
+                          Instan VA
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Dapatkan nomor VA BNI langsung untuk bayar via BNI Mobile Banking atau ATM BNI.
                       </div>
                     </div>
                   </label>
@@ -668,10 +668,10 @@ export const TopupPage: React.FC = () => {
                     </div>
                   </label>
 
-                  {/* BNI Virtual Account */}
+                  {/* BCA Virtual Account */}
                   <label
                     className={`flex items-start p-3.5 rounded-xl border cursor-pointer transition ${
-                      paymentMethod === "bni_va"
+                      paymentMethod === "bca_va"
                         ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
                         : "border-slate-200 hover:border-slate-300"
                     }`}
@@ -679,20 +679,20 @@ export const TopupPage: React.FC = () => {
                     <input
                       type="radio"
                       name="payment_method"
-                      value="bni_va"
-                      checked={paymentMethod === "bni_va"}
+                      value="bca_va"
+                      checked={paymentMethod === "bca_va"}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                       className="mt-1 text-indigo-600 focus:ring-indigo-500"
                     />
                     <div className="ml-3">
                       <div className="font-semibold text-slate-900 text-sm flex items-center space-x-2">
-                        <span>🏦 BNI Virtual Account</span>
+                        <span>🏦 BCA Virtual Account</span>
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">
                           Instan VA
                         </span>
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
-                        Dapatkan nomor VA BNI langsung untuk bayar via BNI Mobile Banking atau ATM BNI.
+                        Dapatkan nomor VA BCA langsung untuk transfer via BCA Mobile, myBCA, KlikBCA, atau ATM BCA.
                       </div>
                     </div>
                   </label>

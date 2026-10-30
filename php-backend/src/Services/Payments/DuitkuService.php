@@ -71,6 +71,28 @@ class DuitkuService
         return $default;
     }
 
+    /**
+     * Mengembalikan kode channel VA yang aktif sesuai mode.
+     * Di sandbox Duitku, hanya BNI (BN) dan Mandiri (M2) yang reliabel.
+     * Di production, BCA (BC) adalah default.
+     */
+    private function getSandboxSafeVaChannel(string $requestedChannel): string
+    {
+        if ($this->getMode() !== 'sandbox') {
+            return $requestedChannel;
+        }
+
+        // Channel yang diketahui aktif di sandbox Duitku
+        $sandboxActiveChannels = ['BN', 'M2', 'BT', 'B1', ''];
+
+        if (in_array(strtoupper($requestedChannel), $sandboxActiveChannels, true)) {
+            return $requestedChannel;
+        }
+
+        // Fallback ke BNI untuk channel yang tidak aktif di sandbox (BCA=BC, BRI=BR, dll.)
+        return 'BN';
+    }
+
     public function isConfigured(): bool
     {
         return $this->merchantCode !== '' && $this->apiKey !== '';
@@ -151,7 +173,7 @@ class DuitkuService
 
         // Map friendly payment method names to Duitku channel codes
         $methodLower = strtolower(trim($paymentMethod));
-        $channel = match ($methodLower) {
+        $rawChannel = match ($methodLower) {
             'bc', 'duitku_va_bca', 'bca_va', 'va_bca', 'bca' => 'BC',
             'm2', 'duitku_va_mandiri', 'mandiri_va', 'va_mandiri', 'mandiri' => 'M2',
             'br', 'duitku_va_bri', 'bri_va', 'va_bri', 'bri' => 'BR',
@@ -159,10 +181,14 @@ class DuitkuService
             'bt', 'duitku_va_permata', 'permata_va', 'va_permata', 'permata' => 'BT',
             'b1', 'duitku_va_cimb', 'cimb_va', 'va_cimb', 'cimb' => 'B1',
             'sp', 'duitku_qris', 'qris', 'shopeepay' => 'SP',
-            'duitku_va', 'va' => 'BC',
+            'duitku_va', 'va' => 'BN',
             'duitku', 'duitku_all', 'all', '' => '',
             default => (empty($paymentMethod) ? '' : strtoupper($paymentMethod)),
         };
+
+        // Di sandbox Duitku, hanya beberapa channel VA yang aktif.
+        // Fallback otomatis ke BNI (BN) jika channel yang diminta tidak tersedia di sandbox.
+        $channel = $this->getSandboxSafeVaChannel($rawChannel);
 
         $payload = [
             'merchantCode' => $this->merchantCode,
