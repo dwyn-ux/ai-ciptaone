@@ -44,7 +44,11 @@ abstract class BaseController
             if ($keyRecord === null) {
                 throw new AppError(ErrorCode::UNAUTHORIZED, 'API key tidak valid atau telah dicabut.', 401);
             }
-            $user = $this->authService->getUserById((string)$keyRecord['user_id']);
+            $userId = is_array($keyRecord) ? ($keyRecord['user_id'] ?? $keyRecord[0] ?? null) : null;
+            if (!$userId) {
+                throw new AppError(ErrorCode::UNAUTHORIZED, 'Pengguna pemilik API key tidak ditemukan atau nonaktif.', 401);
+            }
+            $user = $this->authService->getUserById((string)$userId);
             if ($user === null) {
                 throw new AppError(ErrorCode::UNAUTHORIZED, 'Pengguna pemilik API key tidak ditemukan atau nonaktif.', 401);
             }

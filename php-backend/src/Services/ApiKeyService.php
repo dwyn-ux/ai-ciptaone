@@ -151,6 +151,11 @@ class ApiKeyService
             [$nowIso, $row['id']]
         );
 
-        return [$row['user_id'], $row['id']];
+        return [
+            'user_id' => $row['user_id'],
+            'id' => $row['id'],
+            0 => $row['user_id'],
+            1 => $row['id'],
+        ];
     }
 }
