@@ -309,28 +309,29 @@ export const TopupPage: React.FC = () => {
 
               {/* Virtual Account (VA) Number Card */}
               {activeInvoice.va_number && activeInvoice.status !== "paid" && (
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white space-y-4 shadow-lg border border-indigo-700/40">
+                <div className="p-5 rounded-2xl bg-slate-900 text-white space-y-4 shadow-sm border border-slate-800">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center space-x-2">
                       <CreditCard className="w-4 h-4 text-emerald-400" />
                       <span>Nomor Virtual Account (VA) Resmi</span>
                     </span>
-                    <span className="text-[11px] font-bold px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-md">
                       Verifikasi Otomatis 24/7
                     </span>
                   </div>
 
-                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/15 flex items-center justify-between gap-3">
+                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-[11px] text-slate-300 font-medium">Nomor Rekening VA:</div>
-                      <div className="text-2xl sm:text-3xl font-mono font-black tracking-wider text-emerald-300 select-all truncate">
+                      <div className="text-[11px] text-slate-400 font-medium">Nomor Rekening VA:</div>
+                      <div className="text-2xl sm:text-3xl font-mono font-bold tracking-wider text-emerald-400 select-all truncate">
                         {activeInvoice.va_number}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => copyText(activeInvoice.va_number!)}
-                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm shrink-0"
+                      className="px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                      aria-label="Salin nomor Virtual Account"
                     >
                       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       <span>{copied ? "Disalin!" : "Salin VA"}</span>
@@ -338,38 +339,40 @@ export const TopupPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
                       <div className="text-slate-400 text-[11px]">Kode Referensi / Order ID:</div>
                       <div className="font-semibold text-slate-200 flex items-center justify-between mt-1">
                         <span className="truncate">{activeInvoice.order_id}</span>
                         <button
                           type="button"
                           onClick={() => copyText(activeInvoice.order_id)}
-                          className="text-indigo-400 hover:text-indigo-300 ml-2"
+                          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-indigo-400 hover:text-indigo-300 ml-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-lg"
+                          aria-label="Salin Order ID"
                           title="Salin Order ID"
                         >
-                          <Copy className="w-3.5 h-3.5" />
+                          <Copy className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
 
-                    <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
                       <div className="text-slate-400 text-[11px]">Nominal Bayar Tepat:</div>
                       <div className="font-bold text-emerald-400 flex items-center justify-between mt-1">
                         <span>Rp{activeInvoice.amount_minor.toLocaleString("id-ID")}</span>
                         <button
                           type="button"
                           onClick={() => copyText(activeInvoice.amount_minor.toString())}
-                          className="text-emerald-400 hover:text-emerald-300 ml-2"
+                          className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-emerald-400 hover:text-emerald-300 ml-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-lg"
+                          aria-label="Salin nominal tagihan"
                           title="Salin Nominal"
                         >
-                          <Copy className="w-3.5 h-3.5" />
+                          <Copy className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-400/20 text-[11px] text-slate-300 leading-relaxed">
+                  <div className="p-3 bg-indigo-950/40 rounded-xl border border-indigo-900/40 text-[11px] text-slate-300 leading-relaxed">
                     💡 <b>Petunjuk Pembayaran:</b> Buka m-Banking atau ATM &rarr; Pilih menu <b>Transfer ke Virtual Account</b> &rarr; Masukkan nomor VA di atas &rarr; Periksa nama akun &rarr; Konfirmasi pembayaran. Saldo akun akan langsung terisi seketika tanpa perlu kirim bukti transfer.
                   </div>
                 </div>
@@ -540,7 +543,8 @@ export const TopupPage: React.FC = () => {
                     value={customAmount}
                     onChange={(e) => setCustomAmount(e.target.value)}
                     placeholder="Atau ketik nominal custom (min. Rp10.000)"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    aria-label="Nominal kustom top-up"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                   />
                 </div>
               </div>
@@ -815,7 +819,8 @@ export const TopupPage: React.FC = () => {
                           type="button"
                           disabled={cancelling}
                           onClick={() => handleCancelTopup(item.order_id)}
-                          className="text-[10px] text-rose-600 hover:text-rose-800 font-medium px-1.5 py-0.5 border border-rose-200 rounded hover:bg-rose-50 transition disabled:opacity-50"
+                          className="text-xs text-rose-600 hover:text-rose-800 font-medium px-2.5 py-1.5 min-h-[36px] border border-rose-200 rounded-lg hover:bg-rose-50 transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                          aria-label={`Batalkan tagihan ${item.order_id}`}
                           title="Batalkan tagihan ini"
                         >
                           Batalkan

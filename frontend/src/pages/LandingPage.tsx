@@ -245,14 +245,14 @@ console.log(completion.choices[0].message.content);`,
       icon: Bot,
       title: "Multi-Agent AI (CrewAI, LangChain)",
       desc: "Jalankan arsitektur agen otonom yang melakukan penalaran berulang. Biaya DeepSeek V3 yang super terjangkau menjaga budget riset Anda tetap aman.",
-      highlight: "Hemat Hingga 85%",
+      highlight: "Tarif Terjangkau",
       tag: "Autonomous Agents",
     },
     {
       icon: Globe2,
       title: "Backend Microservices & SaaS AI",
       desc: "Integrasikan ke backend Laravel, Node.js Express, NestJS, FastAPI Python, atau Golang Anda dengan latency rendah dan rate-limit yang lapang.",
-      highlight: "SLA Uptime 99.98%",
+      highlight: "High Availability",
       tag: "Enterprise SaaS",
     },
   ];
@@ -300,24 +300,21 @@ console.log(completion.choices[0].message.content);`,
     },
   ];
 
-  const testimonials = [
+  const technicalGuarantees = [
     {
-      quote: "Sebelumnya kantor kami bayar ratusan dollar tiap bulan untuk langganan OpenAI. Begitu switch ke AI Ciptaone Router dengan DeepSeek V3, tagihan bulanan turun lebih dari 75% tanpa penurunan kualitas!",
-      name: "Rian Hendrawan",
-      role: "CTO, SaaS Startup Jakarta",
-      rating: 5,
+      title: "Standar Drop-in SDK OpenAI",
+      desc: "Mendukung format resmi /v1/chat/completions dan /v1/models. Integrasikan dengan library resmi OpenAI di Python, Node.js, PHP, atau cURL tanpa adaptasi kode yang rumit.",
+      tag: "Protokol Standar",
     },
     {
-      quote: "Fitur top-up QRIS-nya penyelamat banget! Tim kami nggak perlu minjam kartu kredit kantor setiap kali mau ngetes AI di Cursor IDE atau bikin bot WhatsApp pelanggan.",
-      name: "Siti Rahmawati",
-      role: "Lead Software Engineer, Bandung",
-      rating: 5,
+      title: "Transparansi Kredit & Kurs Tetap",
+      desc: "1 Kredit bernilai tetap Rp 1,00. Setiap token dihitung transparan sesuai tarif input dan output per model, tanpa biaya langganan bulanan atau biaya tersembunyi.",
+      tag: "Nilai Tetap",
     },
     {
-      quote: "Integrasinya beneran cuma 3 baris kode! Ganti base_url ke domain router, masukin API key, selesai. Latensinya mantap dan pembukuan kreditnya sangat transparan.",
-      name: "Budi Santoso",
-      role: "Fullstack Developer & Agency Owner, Surabaya",
-      rating: 5,
+      title: "Metode Pembayaran Domestik",
+      desc: "Kemudahan pengisian saldo kredit mulai dari Rp 10.000 menggunakan QRIS instan atau Virtual Account bank nasional tanpa kendala penolakan kartu kredit valas.",
+      tag: "Pembayaran Lokal",
     },
   ];
 
@@ -384,14 +381,8 @@ console.log(completion.choices[0].message.content);`,
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white overflow-x-hidden relative">
       
-      {/* Background Decorative Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[650px] pointer-events-none overflow-hidden -z-10">
-        <div className="absolute top-[-120px] left-1/4 w-[550px] h-[550px] bg-indigo-600/20 rounded-full blur-[140px]" />
-        <div className="absolute top-[-80px] right-1/4 w-[450px] h-[450px] bg-purple-600/15 rounded-full blur-[160px]" />
-      </div>
-
       {/* Top Status & WhatsApp Help Bar */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-b border-indigo-900/40 text-[11px] sm:text-xs py-2 px-4">
+      <div className="bg-slate-900 border-b border-slate-800 text-[11px] sm:text-xs py-2 px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1.5 text-slate-300">
           <div className="flex items-center space-x-2">
             <span className="flex h-2 w-2 relative">
@@ -399,7 +390,7 @@ console.log(completion.choices[0].message.content);`,
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             <span className="font-medium text-slate-200">
-              Sistem Operasional Normal <span className="text-slate-400">• Latensi ~180ms • Uptime 99.98%</span>
+              Sistem Operasional Normal <span className="text-slate-400">• Universal AI Gateway Aktif</span>
             </span>
           </div>
 
@@ -408,24 +399,24 @@ console.log(completion.choices[0].message.content);`,
               href={whatsappLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center space-x-1.5 text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
+              className="flex items-center space-x-1.5 text-emerald-400 hover:text-emerald-300 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-lg px-1.5 py-0.5"
             >
               <Phone className="w-3.5 h-3.5 shrink-0" />
               <span>CS WhatsApp: {whatsappNumber}</span>
             </a>
-            <span className="hidden md:inline text-slate-600">|</span>
+            <span className="hidden md:inline text-slate-500">|</span>
             <span className="hidden md:inline text-slate-400">Jam Layanan: 08:00 - 23:00 WIB</span>
           </div>
         </div>
       </div>
 
       {/* Main Navigation Header */}
-      <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
+      <header className="sticky top-0 z-50 bg-slate-950/95 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2.5 group shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">
               <Cpu className="w-5 h-5" />
             </div>
             <div className="flex items-center space-x-1.5">
@@ -438,13 +429,13 @@ console.log(completion.choices[0].message.content);`,
 
           {/* Desktop Nav links */}
           <nav className="hidden lg:flex items-center space-x-5 text-xs font-semibold text-slate-300">
-            <a href="#fitur" className="hover:text-indigo-400 transition-colors">Fitur Unggulan</a>
-            <a href="#fungsi" className="hover:text-indigo-400 transition-colors">Fungsi & Solusi</a>
-            <a href="#perbandingan" className="hover:text-indigo-400 transition-colors">Perbandingan</a>
-            <a href="#models" className="hover:text-indigo-400 transition-colors">Katalog Model</a>
-            <a href="#kalkulator" className="hover:text-indigo-400 transition-colors">Kalkulator Tarif</a>
-            <a href="#kontak" className="hover:text-indigo-400 transition-colors">Bantuan & Kontak</a>
-            <Link to="/docs" className="flex items-center space-x-1 text-indigo-400 hover:text-indigo-300 transition-colors">
+            <a href="#fitur" className="hover:text-indigo-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-md px-1 py-0.5">Fitur Unggulan</a>
+            <a href="#fungsi" className="hover:text-indigo-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-md px-1 py-0.5">Fungsi & Solusi</a>
+            <a href="#perbandingan" className="hover:text-indigo-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-md px-1 py-0.5">Perbandingan</a>
+            <a href="#models" className="hover:text-indigo-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-md px-1 py-0.5">Katalog Model</a>
+            <a href="#kalkulator" className="hover:text-indigo-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-md px-1 py-0.5">Kalkulator Tarif</a>
+            <a href="#kontak" className="hover:text-indigo-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-md px-1 py-0.5">Bantuan & Kontak</a>
+            <Link to="/docs" className="flex items-center space-x-1 text-indigo-400 hover:text-indigo-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-md px-1 py-0.5">
               <BookOpen className="w-3.5 h-3.5" />
               <span>Dokumentasi API</span>
             </Link>
@@ -456,7 +447,7 @@ console.log(completion.choices[0].message.content);`,
               href={whatsappLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-all font-semibold"
+              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
               title="Konsultasi langsung via WhatsApp"
             >
               <MessageCircle className="w-3.5 h-3.5" />
@@ -466,25 +457,23 @@ console.log(completion.choices[0].message.content);`,
             {user ? (
               <Link
                 to="/dashboard"
-                className="flex items-center space-x-1.5 px-3.5 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-sm shadow-indigo-600/30"
+                className="flex items-center space-x-1.5 px-3.5 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
               >
                 <span>Dashboard</span>
-                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             ) : (
               <>
                 <Link
                   to="/login"
-                  className="px-3 py-2 rounded-xl text-slate-300 hover:text-white font-medium hover:bg-slate-900 transition-colors"
+                  className="px-3 py-2 rounded-xl text-slate-300 hover:text-white font-medium hover:bg-slate-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 >
                   Masuk
                 </Link>
                 <Link
                   to="/register"
-                  className="hidden sm:flex items-center space-x-1 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold transition-all shadow-md shadow-indigo-600/25"
+                  className="hidden sm:flex items-center px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 >
-                  <span>Mulai</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>Daftar Akun</span>
                 </Link>
               </>
             )}
@@ -492,8 +481,8 @@ console.log(completion.choices[0].message.content);`,
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition focus:outline-none"
-              aria-label="Toggle navigation menu"
+              className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              aria-label="Buka menu navigasi"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -594,21 +583,21 @@ console.log(completion.choices[0].message.content);`,
       <section className="relative pt-10 pb-14 sm:pt-16 sm:pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 sm:space-y-8">
         
         {/* Announcement Pill */}
-        <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-xs font-semibold backdrop-blur-sm">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-          <span>Universal AI Gateway Indonesia • 100% Kompatibel OpenAI API</span>
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-indigo-950/70 border border-indigo-800/60 text-indigo-300 text-xs font-medium">
+          <Terminal className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+          <span>OpenAI API Compatible Gateway</span>
         </div>
 
         {/* Headline */}
         <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
           <h1 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.18] sm:leading-[1.15]">
-            Semua Model AI Terbaik Dunia,{" "}
-            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Semua Model AI Unggulan,{" "}
+            <span className="text-indigo-400">
               Satu Saldo & Satu API Key.
             </span>
           </h1>
           <p className="text-xs sm:text-base lg:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Tinggalkan langganan dollar ($) yang boros. Akses <strong>DeepSeek V3</strong>, <strong>GPT-4o</strong>, dan <strong>Claude 3.5 Sonnet</strong> cukup dengan top-up saldo via <strong>QRIS & Bank Lokal</strong>. Hemat hingga 80% biaya token!
+            Akses <strong>DeepSeek V3</strong>, <strong>GPT-4o</strong>, dan <strong>Claude 3.5 Sonnet</strong> cukup dengan saldo kredit fleksibel melalui <strong>QRIS & Bank Lokal</strong>. Tanpa kewajiban kartu kredit luar negeri.
           </p>
         </div>
 
@@ -616,18 +605,16 @@ console.log(completion.choices[0].message.content);`,
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-md sm:max-w-none mx-auto w-full">
           <Link
             to="/register"
-            className="w-full sm:w-auto px-6 sm:px-7 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all hover:scale-[1.02]"
+            className="w-full sm:w-auto px-6 sm:px-7 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-sm flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            <Zap className="w-4 h-4 fill-white shrink-0" />
-            <span>Daftar Akun Gratis</span>
-            <ArrowRight className="w-4 h-4 shrink-0" />
+            <span>Daftar Akun</span>
           </Link>
 
           <Link
             to="/playground"
-            className="w-full sm:w-auto px-5 sm:px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 text-sm font-semibold flex items-center justify-center space-x-2 transition-all"
+            className="w-full sm:w-auto px-5 sm:px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 text-sm font-semibold flex items-center justify-center space-x-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
           >
-            <Play className="w-4 h-4 text-emerald-400 fill-emerald-400/20 shrink-0" />
+            <Play className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>Coba Playground</span>
           </Link>
 
@@ -635,15 +622,15 @@ console.log(completion.choices[0].message.content);`,
             href={whatsappLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full sm:w-auto px-5 sm:px-6 py-3.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-300 border border-emerald-600/40 text-sm font-semibold flex items-center justify-center space-x-2 transition-all"
+            className="w-full sm:w-auto px-5 sm:px-6 py-3.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-300 border border-emerald-600/40 text-sm font-semibold flex items-center justify-center space-x-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
           >
             <MessageCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Tanya CS WhatsApp</span>
+            <span>Bantuan WhatsApp</span>
           </a>
         </div>
 
         {/* Value Badges */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-y-2 gap-x-4 sm:gap-x-6 text-[11px] sm:text-xs text-slate-400">
+        <div className="pt-2 flex flex-wrap items-center justify-center gap-y-2 gap-x-4 sm:gap-x-6 text-[11px] sm:text-xs text-slate-300">
           <div className="flex items-center space-x-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
             <span>1 Kredit = Tepat Rp 1,00</span>
@@ -662,36 +649,34 @@ console.log(completion.choices[0].message.content);`,
           </div>
         </div>
 
-        {/* Metrics Bar */}
+        {/* Platform Features Bar */}
         <div className="pt-4 max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-            <div className="text-xl sm:text-2xl font-black text-indigo-400">100.000+</div>
-            <div className="text-[11px] text-slate-400 font-medium">Request Terlayani</div>
+          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="text-base sm:text-lg font-bold text-white">Rp 1,00</div>
+            <div className="text-xs text-slate-300 font-medium">1 Kredit = Tepat Rp 1</div>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-            <div className="text-xl sm:text-2xl font-black text-emerald-400">~180ms</div>
-            <div className="text-[11px] text-slate-400 font-medium">Rata-rata Respon</div>
+          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="text-base sm:text-lg font-bold text-emerald-400">QRIS & VA</div>
+            <div className="text-xs text-slate-300 font-medium">Verifikasi Otomatis 24/7</div>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-            <div className="text-xl sm:text-2xl font-black text-purple-400">80%</div>
-            <div className="text-[11px] text-slate-400 font-medium">Penghematan Biaya</div>
+          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="text-base sm:text-lg font-bold text-indigo-400">OpenAI v1</div>
+            <div className="text-xs text-slate-300 font-medium">Standar Drop-in SDK</div>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
-            <div className="text-xl sm:text-2xl font-black text-amber-400">Rp 10.000</div>
-            <div className="text-[11px] text-slate-400 font-medium">Minimal Top-up Saldo</div>
+          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="text-base sm:text-lg font-bold text-slate-200">Rp 10.000</div>
+            <div className="text-xs text-slate-300 font-medium">Minimal Top-up Saldo</div>
           </div>
         </div>
 
         {/* Hero Code Terminal Window */}
         <div className="pt-4 max-w-4xl mx-auto text-left w-full">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden w-full">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden w-full">
             {/* Window title bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-slate-950/90 border-b border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-slate-950 border-b border-slate-800">
               <div className="flex items-center space-x-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="text-xs font-mono text-slate-400 ml-1.5 hidden sm:inline">Quickstart Drop-in (OpenAI SDK)</span>
+                <Terminal className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-mono text-slate-300">Quickstart Integration</span>
               </div>
 
               {/* Tabs & Copy Button */}
@@ -719,7 +704,8 @@ console.log(completion.choices[0].message.content);`,
 
                 <button
                   onClick={() => copyCode(codeSnippets[activeCodeTab])}
-                  className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
+                  className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  aria-label="Salin contoh kode ke clipboard"
                   title="Salin kode ke clipboard"
                 >
                   {copiedSnippet ? (
@@ -1097,35 +1083,31 @@ console.log(completion.choices[0].message.content);`,
         </div>
       </section>
 
-      {/* Section: Testimoni Pengembang */}
+      {/* Section: Standar & Keandalan Teknis */}
       <section className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <h2 className="text-xs uppercase font-bold tracking-widest text-indigo-400">Ulasan Nyata</h2>
+          <h2 className="text-xs uppercase font-bold tracking-widest text-indigo-400">Keandalan Arsitektur</h2>
           <p className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Dipercaya Pengembang & Pebisnis Indonesia
+            Fondasi Teknis yang Transparan
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((t, idx) => (
+          {technicalGuarantees.map((item, idx) => (
             <div
               key={idx}
-              className="p-6 sm:p-7 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-4 shadow-lg"
+              className="p-6 sm:p-7 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between space-y-4 shadow-sm"
             >
               <div className="space-y-3">
-                <div className="flex items-center space-x-1 text-amber-400">
-                  {[...Array(t.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400" />
-                  ))}
-                </div>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed italic">
-                  "{t.quote}"
+                <span className="text-[11px] font-semibold px-2.5 py-1 bg-indigo-500/10 text-indigo-300 rounded-md border border-indigo-500/20 inline-block">
+                  {item.tag}
+                </span>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  {item.title}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  {item.desc}
                 </p>
-              </div>
-
-              <div className="pt-4 border-t border-slate-800/80">
-                <div className="font-bold text-sm text-white">{t.name}</div>
-                <div className="text-[11px] text-indigo-400">{t.role}</div>
               </div>
             </div>
           ))}
@@ -1305,8 +1287,7 @@ console.log(completion.choices[0].message.content);`,
 
       {/* Bottom CTA Banner */}
       <section className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 border border-indigo-700/50 p-8 sm:p-14 text-center space-y-6 relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-8 sm:p-14 text-center space-y-6 shadow-sm">
           
           <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
             Siap Membangun Aplikasi AI Anda?

@@ -58,39 +58,36 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl sm:rounded-3xl p-5 sm:p-8 text-white relative overflow-hidden shadow-sm">
+      <div className="bg-slate-900 rounded-2xl p-5 sm:p-8 text-white relative shadow-sm border border-slate-800">
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/30 text-indigo-200 text-xs font-semibold mb-3 sm:mb-4 backdrop-blur-sm border border-indigo-400/20">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Router Universal Gateway</span>
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-lg bg-indigo-950/80 text-indigo-300 text-xs font-semibold mb-3 sm:mb-4 border border-indigo-800/60">
+            <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+            <span>AI Router Gateway</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Selamat datang, {user?.email.split("@")[0]}!
           </h1>
-          <p className="mt-2 text-indigo-100 text-xs sm:text-sm leading-relaxed">
+          <p className="mt-2 text-slate-300 text-xs sm:text-sm leading-relaxed">
             Gunakan playground untuk menguji prompt di berbagai model AI, atau integrasikan endpoint kompatibel OpenAI menggunakan API key Anda.
           </p>
 
           <div className="mt-5 sm:mt-6 flex flex-wrap gap-2.5 sm:gap-3">
             <Link
               to="/playground"
-              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-white text-indigo-900 font-semibold text-xs sm:text-sm hover:bg-indigo-50 transition shadow-sm"
+              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-white text-slate-900 font-semibold text-xs sm:text-sm hover:bg-slate-100 transition shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               <Cpu className="w-4 h-4 mr-2 text-indigo-600" />
               Buka Playground
             </Link>
             <Link
               to="/topup"
-              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold text-xs sm:text-sm transition border border-indigo-400/30 backdrop-blur-sm"
+              className="inline-flex items-center px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm transition shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               <Coins className="w-4 h-4 mr-2" />
               Isi Ulang Saldo
             </Link>
           </div>
         </div>
-
-        {/* Decorative background glow */}
-        <div className="absolute right-0 bottom-0 translate-x-12 translate-y-12 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
       </div>
 
       {/* Metric Cards */}
